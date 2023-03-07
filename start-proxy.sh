@@ -126,6 +126,14 @@ _check_script_verion() {
 	fi
 }
 
+_check_image_version() {
+	IMAGE_VERSION=$( $RUNNER inspect --format="{{.Config.Labels.version}}" "$CONTAINER_NAME" 2>/dev/null )
+	if [ "$IMAGE_VERSION" != "$VERSION" ]; then
+		echo "Updating container to latest version"
+		_update
+	fi
+}
+
 _network_exists() {
 	if ! $RUNNER network inspect $NETWORK_NAME >/dev/null 2>&1; then
 		echo "Network $NETWORK_NAME not found. Creating..."
@@ -275,6 +283,7 @@ _full_start() {
 _parse_args "$@"
 
 _init
+_check_image_version
 
 case "$1" in
 list)
