@@ -1,5 +1,5 @@
 FROM nginxproxy/nginx-proxy:1.2.2
-LABEL version="1.0.5"
+LABEL version="1.0.11"
 
 RUN { \
       echo 'proxy_ssl_verify off;'; \
@@ -9,6 +9,7 @@ COPY ./src/auto-cert.sh /app/
 COPY ./src/notify-listener.sh /app/
 COPY ./src/Procfile /app/
 COPY ./src/nginx.tmpl /app/
+COPY ./src/show-vhosts.sh /app/
 
 RUN chmod +x /app/auto-cert.sh
 RUN chmod +x /app/notify-listener.sh

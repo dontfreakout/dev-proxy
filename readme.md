@@ -103,11 +103,12 @@ This will download docker image and start the proxy with default settings.
 **Usage:** `./dev-proxy.sh [options] [command]`
 
 #### Commands:
-| Command     | Description                             |
-|-------------|-----------------------------------------|
-| `stop`      | Stop the proxy                          |
-| `update`    | Update proxy container                  |
-| `uninstall` | Remove the proxy container and network  |
+| Command     | Description                            |
+|-------------|----------------------------------------|
+| `list`      | List currently available vhost urls    |
+| `stop`      | Stop the proxy                         |
+| `update`    | Update proxy container                 |
+| `uninstall` | Remove the proxy container and network |
 
 #### Exposed ports:
 The proxy is by default available to local machine on port 80 and 443. You can change this with parameters.
@@ -135,9 +136,8 @@ You can follow the steps below to import the certificate.
 2. Click on `Authorities` tab
 3. Click on `Import`
 4. Select Root certificate from config folder
-    - Linux: `~/.config/dev-proxy/certs/rootCA.pem`
-    - Windows: `%APPDATA%\dev-proxy\certs\rootCA.pem`
-    - MacOS: `~/Library/Application Support/dev-proxy/certs/rootCA.pem`
+    - Linux: `~/.config/dev-proxy/certs/rootCA.crt`
+    - MacOS: `~/Library/Application Support/dev-proxy/certs/rootCA.crt`
 5. Click on `Trust this certificate for identifying websites`
 6. Click on `OK`
 
@@ -147,14 +147,14 @@ You can follow the steps below to import the certificate.
 3. Click on `Authorities`
 4. Click on `Import`
 5. Select Root certificate from config folder
-    - Linux: `~/.config/dev-proxy/certs/rootCA.pem`
-    - Windows: `%APPDATA%\dev-proxy\certs\rootCA.pem`
-    - MacOS: `~/Library/Application Support/dev-proxy/certs/rootCA.pem`
+    - Linux: `~/.config/dev-proxy/certs/rootCA.crt`
+    - MacOS: `~/Library/Application Support/dev-proxy/certs/rootCA.crt`
 6. Click on `OK`
 
 
 ## Roadmap
  - add option to install as docker service
+ - possibility to install certificate system-wide
  - check for new version and self update
 
 See the [open issues]() for a list of proposed features (and known issues).

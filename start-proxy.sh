@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION=1.0.5
+VERSION=1.0.11
 NETWORK_NAME=proxy_network
 CONTAINER_NAME=dev-proxy
 IMAGE_NAME=dontfreakout/dev-proxy:latest
@@ -63,6 +63,7 @@ _usage() {
 	Starts a dev-proxy container
 
 	${bold}Commands:${normal}
+	  list										 List currently available vhost urls
 	  stop                     Stop the container
 	  update                   Update the proxy container
 	  uninstall                Remove the proxy container and network
@@ -204,7 +205,19 @@ _init() {
 _update() {
 	_uninstall
 	$RUNNER pull $IMAGE_NAME
+	_migrate
 	_start
+}
+
+_migrate() {
+	if [ ! -d "${CONFIG_DIR}/certs/" ]; then
+  		mkdir -p "${CONFIG_DIR}/certs"
+	fi
+
+	# move root cert to new location
+	if [ -f "${CONFIG_DIR}/rootCA.pem" ]; then
+		mv "${CONFIG_DIR}/rootCA.*" "${CONFIG_DIR}/certs/"
+	fi
 }
 
 _uninstall() {
@@ -216,7 +229,18 @@ _uninstall() {
 
 	if _network_exists; then
 		echo "Removing network $NETWORK_NAME"
-		$RUNNER network rm -f "$NETWORK_NAME" 2>/dev/null || true
+		$RUNNER network rm "$NETWORK_NAME" 2>/dev/null || true
+	fi
+}
+
+_show_vhosts() {
+	if _is_container_running; then
+		echo "Showing available vhosts"
+		echo "-----------------------------------------------"
+		$RUNNER exec -it "$CONTAINER_NAME" /bin/bash -c "/app/show-vhosts.sh"
+		echo "-----------------------------------------------"
+	else
+		echo "Service not running. You can start it with ${bold}$0${normal}"
 	fi
 }
 
@@ -245,7 +269,7 @@ _start() {
 
 _full_start() {
 	_network_exists
-	$RUNNER run -d --name "$CONTAINER_NAME" --net "$NETWORK_NAME" --security-opt label=disable -p "${INSECURE_PORT}:80" -p "${SECURE_PORT}:443" -e AUTOCERT=shared -v "${SOCKET}:/tmp/docker.sock:ro" -v "${CONFIG_DIR}/certs:/etc/nginx/certs:z" $IMAGE_NAME
+	$RUNNER run -d --name "$CONTAINER_NAME" --net "$NETWORK_NAME" --security-opt label=disable -p "${INSECURE_PORT}:${INSECURE_PORT}" -p "${SECURE_PORT}:${SECURE_PORT}" -e HTTP_PORT="${INSECURE_PORT}" -e HTTPS_PORT="${SECURE_PORT}" -e AUTOCERT=shared -v "${SOCKET}:/tmp/docker.sock:ro" -v "${CONFIG_DIR}/certs:/etc/nginx/certs:z" $IMAGE_NAME
 }
 
 _parse_args "$@"
@@ -253,6 +277,10 @@ _parse_args "$@"
 _init
 
 case "$1" in
+list)
+	_show_vhosts
+	exit 0
+	;;
 update)
 	_update
 	exit 0
