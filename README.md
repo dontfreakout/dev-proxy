@@ -159,6 +159,9 @@ You can follow the steps below to import the certificate.
 
 See the [open issues]() for a list of proposed features (and known issues).
 
+## Change log
+See [CHANGELOG.md](CHANGELOG.md) for more information on what has changed recently.
+
 ## Contributing
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
