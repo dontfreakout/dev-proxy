@@ -1,9 +1,7 @@
 FROM nginxproxy/nginx-proxy:1.2.2
-LABEL version="1.0.11"
+LABEL version="1.0.12"
 
-RUN { \
-      echo 'proxy_ssl_verify off;'; \
-    } > /etc/nginx/conf.d/dev_proxy.conf
+COPY ./src/dev_proxy.conf /etc/nginx/conf.d/dev_proxy.conf
 
 COPY ./src/auto-cert.sh /app/
 COPY ./src/notify-listener.sh /app/

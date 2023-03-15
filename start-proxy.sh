@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION=1.0.11
+VERSION=1.0.12
 NETWORK_NAME=proxy_network
 CONTAINER_NAME=dev-proxy
 IMAGE_NAME=dontfreakout/dev-proxy:latest

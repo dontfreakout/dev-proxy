@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.12
+### Bug fixes
+- Remove 60s proxy read and send timeout
+
 ## 1.0.11
 ### New features
 - Command to list available vhost urls `./dev-proxy.sh list`
