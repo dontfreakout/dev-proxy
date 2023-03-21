@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.14
+### New features
+- Better automatic update of the proxy container
+
 ## 1.0.12
 ### Bug fixes
 - Remove 60s proxy read and send timeout

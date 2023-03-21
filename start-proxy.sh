@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION=1.0.12
+VERSION=1.0.14
 NETWORK_NAME=proxy_network
 CONTAINER_NAME=dev-proxy
 IMAGE_NAME=dontfreakout/dev-proxy:latest
@@ -63,7 +63,7 @@ _usage() {
 	Starts a dev-proxy container
 
 	${bold}Commands:${normal}
-	  list										 List currently available vhost urls
+	  list					   List currently available vhost urls
 	  stop                     Stop the container
 	  update                   Update the proxy container
 	  uninstall                Remove the proxy container and network
@@ -112,10 +112,6 @@ _usage() {
 ############################### Checks ########################################
 
 _check_script_verion() {
-	if [ $((RANDOM % 100)) -ne 0 ]; then
-		return
-	fi
-
 	curl -s https://raw.githubusercontent.com/dontfreakout/dev-proxy/master/start-proxy.sh > /tmp/start-proxy.sh
 	if ! cmp -s "$0" /tmp/start-proxy.sh; then
 		echo "Updating script to latest version"
@@ -127,12 +123,75 @@ _check_script_verion() {
 }
 
 _check_image_version() {
-	IMAGE_VERSION=$( $RUNNER inspect --format="{{.Config.Labels.version}}" "$CONTAINER_NAME" 2>/dev/null )
-	if [ "$IMAGE_VERSION" != "$VERSION" ]; then
-		echo "Updating container to latest version"
-		_update
+    REMOTE_VERSION=$(curl -s https://registry.hub.docker.com/v2/repositories/dontfreakout/dev-proxy/tags/ | jq -r '.results[] | select(.name != "latest") | .name' | sort -V | tail -n 1)
+    LOCAL_VERSION=$( $RUNNER inspect --format="{{.Config.Labels.version}}" "$CONTAINER_NAME" 2>/dev/null )
+
+    # If no local version, pull image
+    if [ -z "$LOCAL_VERSION" ]; then
+        echo "Pulling latest image"
+        $RUNNER pull $IMAGE_NAME
+        return
+    fi
+
+    IMAGE_VERSION_COMPARE=$(_semantic_version_compare "$REMOTE_VERSION" "$LOCAL_VERSION")
+
+    # If local version is less than remote version and remote short version is same as script version, pull image
+    if [ "$IMAGE_VERSION_COMPARE" = ">" ] && [ "${REMOTE_VERSION%.*}" = "${VERSION%.*}" ]; then
+        echo "Pulling latest image"
+        $RUNNER pull $IMAGE_NAME
+    fi
+}
+
+_check_internet_connection() {
+		if ping -q -c 1 -W 1 google.com >/dev/null; then
+			return 0
+		fi
+
+		echo "No internet connection"
+		return 1
+}
+
+_check_for_updates() {
+	if _check_internet_connection; then
+		#_check_script_verion
+		_check_image_version
 	fi
 }
+
+_semantic_version_compare() {
+    # https://stackoverflow.com/a/4025065/11236
+    # Usage: semver -r ">$REMOTE_VERSION" "$VERSION"
+    # Returns 0 if = 1 if > 2 if <
+    if [[ $1 == $2 ]]
+        then
+            return 0
+        fi
+        local IFS=.
+        local i ver1=($1) ver2=($2)
+        # fill empty fields in ver1 with zeros
+        for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
+        do
+            ver1[i]=0
+        done
+        for ((i=0; i<${#ver1[@]}; i++))
+        do
+            if [[ -z ${ver2[i]} ]]
+            then
+                # fill empty fields in ver2 with zeros
+                ver2[i]=0
+            fi
+            if ((10#${ver1[i]} > 10#${ver2[i]}))
+            then
+                return 1
+            fi
+            if ((10#${ver1[i]} < 10#${ver2[i]}))
+            then
+                return 2
+            fi
+        done
+        return 0
+}
+
 
 _network_exists() {
 	if ! $RUNNER network inspect $NETWORK_NAME >/dev/null 2>&1; then
@@ -283,7 +342,11 @@ _full_start() {
 _parse_args "$@"
 
 _init
-_check_image_version
+
+# Check for updates in random intervals
+if [ $((RANDOM % 2)) -eq 0 ]; then
+	_check_for_updates
+fi
 
 case "$1" in
 list)
