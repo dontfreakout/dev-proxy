@@ -1,61 +1,17 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION=1.0.14
+VERSION=1.0.15
 NETWORK_NAME=proxy_network
 CONTAINER_NAME=dev-proxy
 IMAGE_NAME=dontfreakout/dev-proxy:latest
 CONFIG_DIR=${XDG_CONFIG_HOME:-$HOME/.config}/dev-proxy
 USER_ID=$(id -u)
+SCRIPT_URL=https://raw.githubusercontent.com/dontfreakout/dev-proxy/master/start-proxy.sh
 
 bold=$(tput bold)
 normal=$(tput sgr0)
 italic=$(tput sitm)
-
-_parse_args() {
-	VALID_ARGS=$(getopt -o s:i:n:c:hv -l secure:,insecure:,network,container,help,version --name "$0" -- "$@")
-	if [[ $? -ne 0 ]]; then
-		exit 1
-	fi
-
-	eval set -- "$VALID_ARGS"
-	while [ : ]; do
-		case "$1" in
-		-s | --secure)
-			SECURE_PORT="$2"
-			shift 2
-			;;
-		-i | --insecure)
-			INSECURE_PORT="$2"
-			shift 2
-			;;
-		-n | --network)
-			NETWORK_NAME="$2"
-			shift 2
-			;;
-		-c | --container)
-			CONTAINER_NAME="$2"
-			shift 2
-			;;
-		-h | --help)
-			_usage
-			exit 0
-			;;
-		-v | --version)
-			echo "dev-proxy version $VERSION"
-			exit 0
-			;;
-		--)
-			shift
-			break
-			;;
-		*)
-			echo "Internal error!"
-			exit 1
-			;;
-		esac
-	done
-}
 
 _usage() {
 	cat <<-EOF
@@ -111,15 +67,23 @@ _usage() {
 }
 ############################### Checks ########################################
 
-_check_script_verion() {
-	curl -s https://raw.githubusercontent.com/dontfreakout/dev-proxy/master/start-proxy.sh > /tmp/start-proxy.sh
-	if ! cmp -s "$0" /tmp/start-proxy.sh; then
-		echo "Updating script to latest version"
-		mv /tmp/start-proxy.sh "$0"
-		chmod +x "$0"
-		echo "Restarting script..."
-		exec "$0" "$@"
+_check_script_version() {
+	# Check if script is up to date
+	SCRIPT_VERSION=$(curl -s $SCRIPT_URL | grep -m 1 "VERSION=" | cut -d "=" -f 2 | tr -d '"')
+
+	if [ $(_version_compare $VERSION) -ge $(_version_compare $SCRIPT_VERSION) ]; then
+		#echo "Script is up to date."
+		return
 	fi
+
+	echo "Script is out of date. Run '${bold}$0 update${normal}' to update."
+}
+
+_update_script() {
+	curl -s $SCRIPT_URL > /tmp/start-proxy.sh
+	mv /tmp/start-proxy.sh "$0"
+	chmod +x "$0"
+	echo "Script updated to version $SCRIPT_VERSION"
 }
 
 _check_image_version() {
@@ -128,15 +92,18 @@ _check_image_version() {
 
     # If no local version, pull image
     if [ -z "$LOCAL_VERSION" ]; then
-        echo "Pulling latest image"
+        echo "No local version found. Pulling latest image."
         $RUNNER pull $IMAGE_NAME
         return
     fi
 
-    IMAGE_VERSION_COMPARE=$(_semantic_version_compare "$REMOTE_VERSION" "$LOCAL_VERSION")
+    if [ $(_version_compare $LOCAL_VERSION) -ge $(_version_compare $REMOTE_VERSION) ]; then
+    		#echo "Docker image is up to date."
+    		return
+		fi
 
     # If local version is less than remote version and remote short version is same as script version, pull image
-    if [ "$IMAGE_VERSION_COMPARE" = ">" ] && [ "${REMOTE_VERSION%.*}" = "${VERSION%.*}" ]; then
+    if [ $? = 1 ] && [ "${REMOTE_VERSION%.*}" = "${VERSION%.*}" ]; then
         echo "Pulling latest image"
         $RUNNER pull $IMAGE_NAME
     fi
@@ -153,43 +120,18 @@ _check_internet_connection() {
 
 _check_for_updates() {
 	if _check_internet_connection; then
-		#_check_script_verion
+		_check_script_version
 		_check_image_version
 	fi
 }
 
-_semantic_version_compare() {
-    # https://stackoverflow.com/a/4025065/11236
-    # Usage: semver -r ">$REMOTE_VERSION" "$VERSION"
-    # Returns 0 if = 1 if > 2 if <
-    if [[ $1 == $2 ]]
-        then
-            return 0
-        fi
-        local IFS=.
-        local i ver1=($1) ver2=($2)
-        # fill empty fields in ver1 with zeros
-        for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
-        do
-            ver1[i]=0
-        done
-        for ((i=0; i<${#ver1[@]}; i++))
-        do
-            if [[ -z ${ver2[i]} ]]
-            then
-                # fill empty fields in ver2 with zeros
-                ver2[i]=0
-            fi
-            if ((10#${ver1[i]} > 10#${ver2[i]}))
-            then
-                return 1
-            fi
-            if ((10#${ver1[i]} < 10#${ver2[i]}))
-            then
-                return 2
-            fi
-        done
-        return 0
+_version_compare() {
+    # https://apple.stackexchange.com/questions/83939/compare-multi-digit-version-numbers-in-bash/123408#123408
+    # Usage:
+    # if [ $(version $VAR) -ge $(version "6.2.0") ]; then
+    #    echo "Version is up to date"
+    #fi
+    echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }';
 }
 
 
@@ -339,14 +281,59 @@ _full_start() {
 	$RUNNER run -d --name "$CONTAINER_NAME" --net "$NETWORK_NAME" --security-opt label=disable -p "${INSECURE_PORT}:${INSECURE_PORT}" -p "${SECURE_PORT}:${SECURE_PORT}" -e HTTP_PORT="${INSECURE_PORT}" -e HTTPS_PORT="${SECURE_PORT}" -e AUTOCERT=shared -v "${SOCKET}:/tmp/docker.sock:ro" -v "${CONFIG_DIR}/certs:/etc/nginx/certs:z" $IMAGE_NAME
 }
 
+_parse_args() {
+	VALID_ARGS=$(getopt -o s:i:n:c:hv -l secure:,insecure:,network,container,help,version --name "$0" -- "$@")
+	if [[ $? -ne 0 ]]; then
+		exit 1
+	fi
+
+	eval set -- "$VALID_ARGS"
+	while [ : ]; do
+		case "$1" in
+		-s | --secure)
+			SECURE_PORT="$2"
+			shift 2
+			;;
+		-i | --insecure)
+			INSECURE_PORT="$2"
+			shift 2
+			;;
+		-n | --network)
+			NETWORK_NAME="$2"
+			shift 2
+			;;
+		-c | --container)
+			CONTAINER_NAME="$2"
+			shift 2
+			;;
+		-h | --help)
+			_usage
+			exit 0
+			;;
+		-v | --version)
+			echo "dev-proxy version $VERSION"
+			exit 0
+			;;
+		--)
+			shift
+			break
+			;;
+		*)
+			echo "Internal error!"
+			exit 1
+			;;
+		esac
+	done
+}
+
 _parse_args "$@"
 
 _init
 
 # Check for updates in random intervals
-if [ $((RANDOM % 2)) -eq 0 ]; then
+#if [ $((RANDOM % 2)) -eq 0 ]; then
 	_check_for_updates
-fi
+#fi
 
 case "$1" in
 list)
