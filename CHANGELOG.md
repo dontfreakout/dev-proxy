@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.16
+### New features
+- Allow unlimited content size in requests
+
 ## 1.0.14
 ### New features
 - Better automatic update of the proxy container

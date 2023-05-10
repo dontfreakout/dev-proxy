@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION=1.0.15
+VERSION=1.0.16
 NETWORK_NAME=proxy_network
 CONTAINER_NAME=dev-proxy
 IMAGE_NAME=dontfreakout/dev-proxy:latest
@@ -86,6 +86,7 @@ _update_script() {
 	echo "Script updated to version $SCRIPT_VERSION"
 }
 
+# Check if docker image is up to date, ignore latest tag
 _check_image_version() {
     REMOTE_VERSION=$(curl -s https://registry.hub.docker.com/v2/repositories/dontfreakout/dev-proxy/tags/ | jq -r '.results[] | select(.name != "latest") | .name' | sort -V | tail -n 1)
     LOCAL_VERSION=$( $RUNNER inspect --format="{{.Config.Labels.version}}" "$CONTAINER_NAME" 2>/dev/null )
@@ -98,7 +99,7 @@ _check_image_version() {
     fi
 
     if [ $(_version_compare $LOCAL_VERSION) -ge $(_version_compare $REMOTE_VERSION) ]; then
-    		#echo "Docker image is up to date."
+    		echo "Docker image is up to date."
     		return
 		fi
 

@@ -410,6 +410,8 @@ server {
         {{- end }}
     {{ $globals.access_log }}
 
+    client_max_body_size: 0;
+
     # Do not HTTPS redirect Let's Encrypt ACME challenge
     location ^~ /.well-known/acme-challenge/ {
         auth_basic off;
@@ -449,6 +451,8 @@ server {
         {{- end }}
 
         {{- template "ssl_policy" (dict "ssl_policy" $ssl_policy) }}
+
+    client_max_body_size: 0;
 
     ssl_session_timeout 5m;
     ssl_session_cache shared:SSL:50m;
@@ -522,6 +526,8 @@ server {
         {{- end }}
     {{ $globals.access_log }}
     return 500;
+
+    client_max_body_size: 0;
 
     ssl_certificate /etc/nginx/certs/default.crt;
     ssl_certificate_key /etc/nginx/certs/default.key;
