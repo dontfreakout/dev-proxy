@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.17
+### Bug fixes
+- Fix nginx configuration for unlimited content size
+
 ## 1.0.16
 ### New features
 - Allow unlimited content size in requests
