@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION=1.1.0
+VERSION=1.1.1
 NETWORK_NAME=proxy_network
 CONTAINER_NAME=dev-proxy
 IMAGE_NAME=dontfreakout/dev-proxy:latest
@@ -214,6 +214,7 @@ _init() {
 
 _update() {
 	_uninstall
+	_update_script
 	$RUNNER pull $IMAGE_NAME
 	_migrate
 	_start
@@ -332,9 +333,9 @@ _parse_args "$@"
 _init
 
 # Check for updates in random intervals
-#if [ $((RANDOM % 2)) -eq 0 ]; then
+if [ $((RANDOM % 2)) -eq 0 ]; then
 	_check_for_updates
-#fi
+fi
 
 case "$1" in
 list)

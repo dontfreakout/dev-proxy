@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+### New features
+ - enable check for script updates
+
 ## 1.1.0
 ### New features
  - The updated script now uses awk to better sort and list out domains. The output now includes better-segregated and colored results to enhance readability.

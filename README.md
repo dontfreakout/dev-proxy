@@ -56,7 +56,7 @@ chmod +x dev-proxy.sh
 #### Optional: move the script to a directory in your PATH
 for example:
 ```sh
-mv script.sh ~/.local/bin/dev-proxy
+mv dev-proxy.sh ~/.local/bin/dev-proxy
 ```
 
 ## Usage
