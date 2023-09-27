@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2
+### Bug fixes
+ - Fix check for running container on first run
+
 ## 1.1.1
 ### New features
  - enable check for script updates
