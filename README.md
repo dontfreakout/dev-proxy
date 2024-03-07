@@ -45,18 +45,18 @@ You can download the script and run it from there. Alternatively you can clone t
 
 #### Download the script
 ```sh
-curl -O https://raw.githubusercontent.com/dontfreakout/repo/master/dev-proxy.sh
+curl -O https://raw.githubusercontent.com/dontfreakout/repo/master/start-proxy.sh
 ```
 
 #### Change permission
 ```sh
-chmod +x dev-proxy.sh
+chmod +x start-proxy.sh
 ```
 
 #### Optional: move the script to a directory in your PATH
 for example:
 ```sh
-mv dev-proxy.sh ~/.local/bin/dev-proxy
+mv start-proxy.sh ~/.local/bin/dev-proxy
 ```
 
 ## Usage
@@ -96,11 +96,11 @@ You can run the script using the following command.
 This will download docker image and start the proxy with default settings.
 
 ```sh
-./dev-proxy.sh
+./start-proxy.sh
 ```
 
 ### Command line options
-**Usage:** `./dev-proxy.sh [options] [command]`
+**Usage:** `./start-proxy.sh [options] [command]`
 
 #### Commands:
 | Command     | Description                            |
@@ -113,7 +113,7 @@ This will download docker image and start the proxy with default settings.
 #### Exposed ports:
 The proxy is by default available to local machine on port 80 and 443. You can change this with parameters.
 ```sh
-./dev-proxy.sh -s 8443 -i 8080
+./start-proxy.sh -s 8443 -i 8080
 ```
 
 #### All options:
