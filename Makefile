@@ -16,10 +16,12 @@ help: ## This help.
 # DOCKER TASKS
 # Build the container
 build: ## Build the container
-	docker build -t $(APP_NAME) .
+	docker manifest create --amend $(APP_NAME)
+	docker build --platform linux/amd64,linux/arm64 --manifest $(APP_NAME) .
 
 build-nc: ## Build the container without caching
-	docker build --no-cache -t $(APP_NAME) .
+	docker manifest create --amend $(APP_NAME)
+	docker build --platform linux/amd64,linux/arm64 --no-cache --manifest $(APP_NAME) .
 
 release: build-nc publish ## Make a release by building and publishing the `{version}` ans `latest` tagged containers to registry
 
@@ -28,11 +30,11 @@ publish: publish-latest publish-version ## Publish the `{version}` ans `latest` 
 
 publish-latest: tag-latest ## Publish the `latest` tagged container to registry
 	@echo 'publish latest to $(DOCKER_REPO)'
-	docker push $(DOCKER_REPO)/$(APP_NAME):latest
+	docker manifest push $(DOCKER_REPO)/$(APP_NAME):latest
 
 publish-version: tag-version ## Publish the `{version}` tagged container to registry
 	@echo 'publish $(VERSION) to $(DOCKER_REPO)'
-	docker push $(DOCKER_REPO)/$(APP_NAME):$(VERSION)
+	docker manifest push $(DOCKER_REPO)/$(APP_NAME):$(VERSION)
 
 # Docker tagging
 tag: tag-latest tag-version ## Generate container tags for the `{version}` and `latest` tags

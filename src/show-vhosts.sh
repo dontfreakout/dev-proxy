@@ -1,10 +1,25 @@
 #!/usr/bin/env bash
 set -e
 
+RETRY_INTERVAL=2
+RETRY_MAX=3
 
 function print() {
 		# Retrieve a list of distinct server names from the nginx configuration.
     LOCAL_DOMAINS=$(nginx -T 2>/dev/null | sed -nr "s/^\s+server_name\s+([^_ ]+)\s*;/\1/p" | uniq)
+
+		# If no server names are found, try again with delay (try maximum RETRY_MAX times).
+		if [ -z "$LOCAL_DOMAINS" ]; then
+				if [ "$RETRY_MAX" -gt 0 ]; then
+						RETRY_MAX=$((RETRY_MAX - 1))
+						sleep $RETRY_INTERVAL
+						print
+						return
+				fi
+
+				echo "No server names found in the nginx configuration."
+				return 1
+		fi
 
 		# Process the list of server names.
     # Get the last two parts of each domain name.
@@ -36,5 +51,5 @@ else
 	PROTOCOL="http"
 fi
 
-# print the list of server names, if it fails, try again after 2 seconds (dont output error on first try)
-print  2>/dev/null || (sleep 2 && print)
+# print the list of server names, if it fails, try again after N seconds (dont output error on first try)
+print  2>/dev/null || (sleep $RETRY_INTERVAL && print)

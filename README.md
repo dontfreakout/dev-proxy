@@ -7,12 +7,12 @@
   <p align="center">
     Reverse proxy for local development with Docker or Podman
     <br />
-    <a href="https://github.com/github_username/repo_name"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/dontfreakout/dev-proxy"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/github_username/repo_name/issues">Report Bug</a>
+    <a href="https://github.com/dontfreakout/dev-proxy/issues">Report Bug</a>
     ·
-    <a href="https://github.com/github_username/repo_name/issues">Request Feature</a>
+    <a href="https://github.com/dontfreakout/dev-proxy/issues">Request Feature</a>
   </p>
 </div>
 
@@ -45,7 +45,7 @@ You can download the script and run it from there. Alternatively you can clone t
 
 #### Download the script
 ```sh
-curl -O https://raw.githubusercontent.com/dontfreakout/repo/master/start-proxy.sh
+curl -O https://raw.githubusercontent.com/dontfreakout/dev-proxy/master/start-proxy.sh
 ```
 
 #### Change permission
@@ -69,7 +69,6 @@ Also, you need to add the container and the service to the proxy network.
 
 Example configuration:
 ```yaml
-version: "3.9"
 services:
   my-service:
     networks:
@@ -137,7 +136,7 @@ You can follow the steps below to import the certificate.
 3. Click on `Import`
 4. Select Root certificate from config folder
     - Linux: `~/.config/dev-proxy/certs/rootCA.crt`
-    - MacOS: `~/Library/Application Support/dev-proxy/certs/rootCA.crt`
+    - MacOS: `~/Library/Application Support/dev-proxy/certs/rootCA.crt` or `~/.config/dev-proxy/certs/rootCA.crt`
 5. Click on `Trust this certificate for identifying websites`
 6. Click on `OK`
 
@@ -148,7 +147,7 @@ You can follow the steps below to import the certificate.
 4. Click on `Import`
 5. Select Root certificate from config folder
     - Linux: `~/.config/dev-proxy/certs/rootCA.crt`
-    - MacOS: `~/Library/Application Support/dev-proxy/certs/rootCA.crt`
+    - MacOS: `~/Library/Application Support/dev-proxy/certs/rootCA.crt` or `~/.config/dev-proxy/certs/rootCA.crt`
 6. Click on `OK`
 
 

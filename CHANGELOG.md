@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0
+### Enhancements
+- Improved `_check_image_version` function in `start-proxy.sh` to use `grep` instead of `jq` _(**fewer dependencies**)_.
+- Enhanced `list` command - retry fetching server names with configurable retry interval and max attempts.
+- Updated `Makefile` to support multi-platform Docker builds and push Docker manifests.
+- Added `CONTAINER_TAGS_URL` variable to get rid of hardcoded url in the script.
+### Bug fixes
+- Updated README.md with correct repository links and additional MacOS certificate path.
+
 ## 1.1.2
 ### Bug fixes
  - Fix check for running container on first run

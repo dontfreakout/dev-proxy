@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION=1.1.2
+VERSION=1.2.0
 NETWORK_NAME=proxy_network
 CONTAINER_NAME=dev-proxy
 IMAGE_NAME=dontfreakout/dev-proxy:latest
 CONFIG_DIR=${XDG_CONFIG_HOME:-$HOME/.config}/dev-proxy
 USER_ID=$(id -u)
 SCRIPT_URL=https://raw.githubusercontent.com/dontfreakout/dev-proxy/master/start-proxy.sh
+CONTAINER_TAGS_URL=https://registry.hub.docker.com/v2/repositories/dontfreakout/dev-proxy/tags/
 
 bold=$(tput bold)
 normal=$(tput sgr0)
@@ -88,8 +89,8 @@ _update_script() {
 
 # Check if docker image is up to date, ignore latest tag
 _check_image_version() {
-    REMOTE_VERSION=$(curl -s https://registry.hub.docker.com/v2/repositories/dontfreakout/dev-proxy/tags/ | jq -r '.results[] | select(.name != "latest") | .name' | sort -V | tail -n 1)
-    LOCAL_VERSION=$( $RUNNER inspect --format="{{.Config.Labels.version}}" "$CONTAINER_NAME" 2>/dev/null )
+		REMOTE_VERSION=$(curl -s $CONTAINER_TAGS_URL | grep -oP '"name":\s*"\K[^"]+' | grep -v "latest" | sort -V | tail -n 1)
+		LOCAL_VERSION=$( $RUNNER inspect --format="{{.Config.Labels.version}}" "$CONTAINER_NAME" 2>/dev/null )
 
     # If no local version, pull image
     if [ -z "$LOCAL_VERSION" ]; then
