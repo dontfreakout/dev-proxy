@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION=1.2.0
+VERSION=1.2.1
 NETWORK_NAME=proxy_network
 CONTAINER_NAME=dev-proxy
 IMAGE_NAME=dontfreakout/dev-proxy:latest
@@ -89,7 +89,7 @@ _update_script() {
 
 # Check if docker image is up to date, ignore latest tag
 _check_image_version() {
-		REMOTE_VERSION=$(curl -s $CONTAINER_TAGS_URL | grep -oP '"name":\s*"\K[^"]+' | grep -v "latest" | sort -V | tail -n 1)
+		REMOTE_VERSION=$(curl -s $CONTAINER_TAGS_URL | perl -nle'print $& while m{"name":\s*"\K[^"]+}g' | grep -v "latest" | sort -V | tail -n 1)
 		LOCAL_VERSION=$( $RUNNER inspect --format="{{.Config.Labels.version}}" "$CONTAINER_NAME" 2>/dev/null )
 
     # If no local version, pull image
@@ -264,6 +264,8 @@ _stop() {
 }
 
 _start() {
+	_network_exists
+
 	if ! _container_exists; then
   	echo "Container $CONTAINER_NAME not found. Creating..."
   	_full_start
@@ -280,7 +282,6 @@ _start() {
 }
 
 _full_start() {
-	_network_exists
 	$RUNNER run -d --name "$CONTAINER_NAME" --net "$NETWORK_NAME" --security-opt label=disable -p "${INSECURE_PORT}:${INSECURE_PORT}" -p "${SECURE_PORT}:${SECURE_PORT}" -e HTTP_PORT="${INSECURE_PORT}" -e HTTPS_PORT="${SECURE_PORT}" -e AUTOCERT=shared -v "${SOCKET}:/tmp/docker.sock:ro" -v "${CONFIG_DIR}/certs:/etc/nginx/certs:z" $IMAGE_NAME
 }
 

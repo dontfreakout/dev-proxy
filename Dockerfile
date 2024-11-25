@@ -1,5 +1,5 @@
 FROM nginxproxy/nginx-proxy:1.2.2
-LABEL version="1.2.0"
+LABEL version="1.2.1"
 
 COPY ./src/dev_proxy.conf /etc/nginx/conf.d/dev_proxy.conf
 

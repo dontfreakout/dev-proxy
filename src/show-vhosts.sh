@@ -8,8 +8,8 @@ function print() {
 		# Retrieve a list of distinct server names from the nginx configuration.
     LOCAL_DOMAINS=$(nginx -T 2>/dev/null | sed -nr "s/^\s+server_name\s+([^_ ]+)\s*;/\1/p" | uniq)
 
-		# If no server names are found, try again with delay (try maximum RETRY_MAX times).
-		if [ -z "$LOCAL_DOMAINS" ]; then
+		# If no server names are found (empty LOCAL_DOMAINS or with whitespace), try again with delay (try maximum RETRY_MAX times).
+		if [ -z "${LOCAL_DOMAINS//[:space:]}" ]; then
 				if [ "$RETRY_MAX" -gt 0 ]; then
 						RETRY_MAX=$((RETRY_MAX - 1))
 						sleep $RETRY_INTERVAL
@@ -43,8 +43,8 @@ function print() {
     } END{ print y }' # END clause to ensure the last part is also printed out.
 }
 
-if [ "$HTTPS_PORT" != "443" ] && [ -n "$HTTPS_PORT" ]; then
-	PORT=":$HTTPS_PORT"
+if [ -n "$HTTPS_PORT" ]; then
+	PORT=$(if [ "$HTTPS_PORT" -ne 443 ]; then echo ":$HTTPS_PORT"; else echo ""; fi)
 	PROTOCOL="https"
 else
 	PORT=""

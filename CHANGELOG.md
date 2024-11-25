@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.1
+### Enhancements
+ - Improved `_check_image_version` function in `start-proxy.sh` to use `perl` instead of `grep` for better compatibility on MacOS
+
+### Bug fixes
+ - Fixed the issue with the `list` command not working immediately after proxy start
+ - Fixed HTTPS port hadling in `list` command
+ - Fixed the `_start function` in `start-proxy.sh` to ensure the network always exists before starting the container (resolves [#3](https://github.com/dontfreakout/dev-proxy/issues/3), thanks [@DominikVisek](https://github.com/DominikVisek) for reporting)
+
 ## 1.2.0
 ### Enhancements
 - Improved `_check_image_version` function in `start-proxy.sh` to use `grep` instead of `jq` _(**fewer dependencies**)_.
