@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2
+### Enhancements
+ - Replace tput with ANSI escape codes for better compatibility
+
 ## 1.2.1
 ### Enhancements
  - Improved `_check_image_version` function in `start-proxy.sh` to use `perl` instead of `grep` for better compatibility on MacOS

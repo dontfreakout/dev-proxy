@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION=1.2.1
+VERSION=1.2.2
 NETWORK_NAME=proxy_network
 CONTAINER_NAME=dev-proxy
 IMAGE_NAME=dontfreakout/dev-proxy:latest
@@ -10,9 +10,9 @@ USER_ID=$(id -u)
 SCRIPT_URL=https://raw.githubusercontent.com/dontfreakout/dev-proxy/master/start-proxy.sh
 CONTAINER_TAGS_URL=https://registry.hub.docker.com/v2/repositories/dontfreakout/dev-proxy/tags/
 
-bold=$(tput bold)
-normal=$(tput sgr0)
-italic=$(tput sitm)
+bold='\033[1m'
+normal='\033[0m'
+italic='\033[3m'
 
 _usage() {
 	cat <<-EOF
