@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Services</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        li {
+            background-color: #e9e9e9;
+            margin-bottom: 5px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Available Services</h1>
+
+        {{range $baseDomain, $vhosts := .}}
+        <h2>{{ $baseDomain }}</h2>
+        <ul>
+            {{range $vhost := $vhosts}}
+            <li><a href="{{ $vhost.Scheme }}://{{ $vhost.Host }}">{{ $vhost.Scheme }}://{{ $vhost.Host }}</a></li>
+            {{end}}
+        </ul>
+        {{else}}
+        <p>No services configured.</p>
+        {{end}}
+    </div>
+</body>
+</html>
