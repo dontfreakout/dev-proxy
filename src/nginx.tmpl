@@ -26,6 +26,47 @@
 #     {{ .Name }}
 {{- end }}
 
+{{- /* Prepare data for the default index page */}}
+{{- $vhostIndexData := dict }}
+{{- range $cid, $container := $globals.containers }}
+    {{- if $container.Env.VIRTUAL_HOST }}
+        {{- $virtual_hosts := splitList "," $container.Env.VIRTUAL_HOST }}
+        {{- $is_https_container := false }}
+        {{- $certName := $container.Env.CERT_NAME }}
+        {{- $https_method := or $container.Env.HTTPS_METHOD $globals.Env.HTTPS_METHOD "redirect" }}
+
+        {{- range $v_host_untrimmed := $virtual_hosts }}
+            {{- $v_host := trim $v_host_untrimmed }}
+            {{- if not (hasPrefix "~" $v_host) }} {{/* Skip regex hosts for now, or handle them under a generic key */}}
+                {{- $vhostCertPath := printf "/etc/nginx/certs/%s.crt" (coalesce $certName $v_host) }}
+                {{- $vhostKeyPath := printf "/etc/nginx/certs/%s.key" (coalesce $certName $v_host) }}
+                {{- if and (ne $https_method "nohttps") (exists $vhostCertPath) (exists $vhostKeyPath) }}
+                    {{- $is_https_container = true }}
+                {{- else }}
+                    {{- $is_https_container = false }}
+                {{- end }}
+                {{- $scheme := when $is_https_container "https" "http" }}
+
+                {{- $parts := splitList "." $v_host }}
+                {{- $num_parts := len $parts }}
+                {{- $base_domain := $v_host }}
+                {{- if gt $num_parts 2 }} {{/* e.g. sub.example.com -> example.com */}}
+                    {{- $base_domain = printf "%s.%s" (index $parts (sub $num_parts 2)) (index $parts (sub $num_parts 1)) }}
+                {{- else if eq $num_parts 2 }} {{/* e.g. example.com -> example.com */}}
+                    {{- $base_domain = $v_host }}
+                {{- else }} {{/* e.g. localhost -> localhost */}}
+                    {{- $base_domain = $v_host }}
+                {{- end }}
+
+                {{- $serviceInfo := dict "Scheme" $scheme "Host" $v_host }}
+                {{- $existingServices := (get $vhostIndexData $base_domain) | default list }}
+                {{- $_ := set $vhostIndexData $base_domain (append $existingServices $serviceInfo) }}
+            {{- end }}
+        {{- end }}
+    {{- end }}
+{{- end }}
+{{- /* End of data preparation for default index page */}}
+
 {{- /*
      * Template used as a function to get a container's IP address.  This
      * template only outputs debug comments; the IP address is "returned" by
@@ -304,7 +345,77 @@ server {
     listen [::]:{{ $globals.external_http_port }};
 {{- end }}
     {{ $globals.access_log }}
-    return 503;
+    # return 503; # Replaced by dynamic index page
+
+    location / {
+        default_type text/html;
+        return 200 '
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Services</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        li {
+            background-color: #e9e9e9;
+            margin-bottom: 5px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Available Services</h1>
+
+        {{- range $baseDomain, $vhosts := $vhostIndexData      }}
+        <h2>{{ $baseDomain }}</h2>
+        <ul>
+            {{- range $vhost := $vhosts         }}
+            <li><a href="{{ $vhost.Scheme }}://{{ $vhost.Host }}">{{ $vhost.Scheme }}://{{ $vhost.Host }}</a></li>
+            {{- end         }}
+        </ul>
+        {{- else     }}
+        <p>No services configured or VIRTUAL_HOSTs are regex patterns.</p>
+        {{- end     }}
+    </div>
+</body>
+</html>';
+    }
 
 {{- if (and (exists "/etc/nginx/certs/default.crt") (exists "/etc/nginx/certs/default.key")) }}
     listen {{ $globals.external_https_port }} ssl http2;
@@ -316,6 +427,79 @@ server {
     ssl_session_tickets off;
     ssl_certificate /etc/nginx/certs/default.crt;
     ssl_certificate_key /etc/nginx/certs/default.key;
+
+    # For HTTPS default server, we also serve the index page.
+    # Nginx does not allow 'return' inside 'if', so we repeat the location block
+    # or use a named location if it were more complex. Here, repeating is acceptable.
+    location / {
+        default_type text/html;
+        return 200 '
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Services</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        li {
+            background-color: #e9e9e9;
+            margin-bottom: 5px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Available Services</h1>
+
+        {{- range $baseDomain, $vhosts := $vhostIndexData      }}
+        <h2>{{ $baseDomain }}</h2>
+        <ul>
+            {{- range $vhost := $vhosts         }}
+            <li><a href="{{ $vhost.Scheme }}://{{ $vhost.Host }}">{{ $vhost.Scheme }}://{{ $vhost.Host }}</a></li>
+            {{- end         }}
+        </ul>
+        {{- else     }}
+        <p>No services configured or VIRTUAL_HOSTs are regex patterns.</p>
+        {{- end     }}
+    </div>
+</body>
+</html>';
+    }
 {{- end }}
 }
 
