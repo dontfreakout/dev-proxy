@@ -58,7 +58,8 @@
                     {{- $base_domain = $v_host }}
                 {{- end }}
 
-                {{- $serviceInfo := dict "Scheme" $scheme "Host" $v_host }}
+                {{- /* Store the original scheme to decide which port (http/https) to check for non-standard values */}}
+                {{- $serviceInfo := dict "OriginalScheme" $scheme "Host" $v_host }}
                 {{- $existingServices := (get $vhostIndexData $base_domain) | default list }}
                 {{- $_ := set $vhostIndexData $base_domain (append $existingServices $serviceInfo) }}
             {{- end }}
@@ -406,7 +407,17 @@ server {
         <h2>{{ $baseDomain }}</h2>
         <ul>
             {{- range $vhost := $vhosts         }}
-            <li><a href="{{ $vhost.Scheme }}://{{ $vhost.Host }}">{{ $vhost.Scheme }}://{{ $vhost.Host }}</a></li>
+            {{- $portString := "" }}
+            {{- if eq $vhost.OriginalScheme "http" }}
+                {{- if ne $globals.external_http_port "80" }}
+                    {{- $portString = printf ":%s" $globals.external_http_port }}
+                {{- end }}
+            {{- else if eq $vhost.OriginalScheme "https" }}
+                {{- if ne $globals.external_https_port "443" }}
+                    {{- $portString = printf ":%s" $globals.external_https_port }}
+                {{- end }}
+            {{- end }}
+            <li><a href="//{{ $vhost.Host }}{{ $portString }}">{{ $vhost.Host }}{{ $portString }}</a></li>
             {{- end         }}
         </ul>
         {{- else     }}
@@ -490,7 +501,17 @@ server {
         <h2>{{ $baseDomain }}</h2>
         <ul>
             {{- range $vhost := $vhosts         }}
-            <li><a href="{{ $vhost.Scheme }}://{{ $vhost.Host }}">{{ $vhost.Scheme }}://{{ $vhost.Host }}</a></li>
+            {{- $portString := "" }}
+            {{- if eq $vhost.OriginalScheme "http" }}
+                {{- if ne $globals.external_http_port "80" }}
+                    {{- $portString = printf ":%s" $globals.external_http_port }}
+                {{- end }}
+            {{- else if eq $vhost.OriginalScheme "https" }}
+                {{- if ne $globals.external_https_port "443" }}
+                    {{- $portString = printf ":%s" $globals.external_https_port }}
+                {{- end }}
+            {{- end }}
+            <li><a href="//{{ $vhost.Host }}{{ $portString }}">{{ $vhost.Host }}{{ $portString }}</a></li>
             {{- end         }}
         </ul>
         {{- else     }}
