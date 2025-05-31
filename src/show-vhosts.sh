@@ -4,77 +4,161 @@ set -e
 RETRY_INTERVAL=2
 RETRY_MAX=3
 
-function list_domains() {
-	# Retrieve a list of distinct server names from the nginx configuration.
-		LOCAL_DOMAINS=$(nginx -T 2>/dev/null | sed -nr "s/^\s+server_name\s+([^_ ]+)\s*;/\1/p" | uniq)
+# Function to list domains from nginx config
+# Output: space-separated list of domain names
+_list_domains_internal() {
+    local attempt=0
+    local domains=""
+    while [ $attempt -le $RETRY_MAX ]; do
+        domains=$(nginx -T 2>/dev/null | sed -nr 's/^\s*server_name\s+([^;]+);.*/\1/p' | grep -v '^\s*_\s*$' | xargs -n1 | sort -u | xargs)
 
-	# If no server names are found (empty LOCAL_DOMAINS or with whitespace), try again with delay (try maximum RETRY_MAX times).
-	if [ -z "${LOCAL_DOMAINS//[:space:]}" ]; then
-			if [ "$RETRY_MAX" -gt 0 ]; then
-					RETRY_MAX=$((RETRY_MAX - 1))
-					sleep $RETRY_INTERVAL
-					list_domains
-					return
-			fi
+        if [ -n "${domains// }" ]; then
+            echo "$domains"
+            return 0
+        fi
 
-			echo "No server names found in the nginx configuration."
-			return 1
-	fi
-
-	 echo "$LOCAL_DOMAINS"
+        if [ $attempt -lt $RETRY_MAX ]; then
+            sleep $RETRY_INTERVAL
+        else
+            return 1
+        fi
+        attempt=$((attempt + 1))
+    done
 }
 
-function print() {
-		# Retrieve a list of distinct server names from the nginx configuration.
-    LOCAL_DOMAINS=$(nginx -T 2>/dev/null | sed -nr "s/^\s+server_name\s+([^_ ]+)\s*;/\1/p" | uniq)
 
-		# If no server names are found (empty LOCAL_DOMAINS or with whitespace), try again with delay (try maximum RETRY_MAX times).
-		if [ -z "${LOCAL_DOMAINS//[:space:]}" ]; then
-				if [ "$RETRY_MAX" -gt 0 ]; then
-						RETRY_MAX=$((RETRY_MAX - 1))
-						sleep $RETRY_INTERVAL
-						print
-						return
-				fi
+_generate_html_content() {
+    local domains_str=$1
+    local http_port_env="${HTTP_PORT:-80}"
+    local https_port_env="${HTTPS_PORT}"
 
-				echo "No server names found in the nginx configuration."
-				return 1
-		fi
+    local vhost_html_list=""
 
-		# Process the list of server names.
-    # Get the last two parts of each domain name.
-    # Sort by the first field.
-    echo "$LOCAL_DOMAINS" | \
-    awk -F'.' '{ print $(NF-1) "." $NF "\t" $0 }' | \
-    sort -k1,1 | \
-    awk -v PROTOCOL=$PROTOCOL -v PORT=$PORT -F'\t' 'BEGIN {
-        GREEN="\033[1;32m"
-        NC="\033[0m"
-    }
-    function format(i, link) { # Function to format the output.
-        return "\t" i ". " PROTOCOL "://" link PORT "\n";
+    if [ -z "$domains_str" ]; then
+        vhost_html_list="<p class=\"no-vhosts\">No virtual hosts are currently configured.</p>"
+    else
+        vhost_html_list="<ul id=\"vhost-list\">"
+        for domain in $domains_str; do
+            local current_protocol="http"
+            local current_port_str=""
+
+            if [ -n "$https_port_env" ]; then
+                current_protocol="https"
+                if [ "$https_port_env" != "443" ]; then
+                    current_port_str=":$https_port_env"
+                fi
+            else
+                if [ "$http_port_env" != "80" ]; then
+                    current_port_str=":$http_port_env"
+                fi
+            fi
+
+            local link_domain="$domain"
+            if [[ "$domain" == "*."* ]]; then
+                link_domain="${domain#*.}"
+            fi
+
+            vhost_html_list="${vhost_html_list}<li><a href=\"${current_protocol}://${link_domain}${current_port_str}\" target=\"_blank\">${domain}</a></li>"
+        done
+        vhost_html_list="${vhost_html_list}</ul>"
+    fi
+    echo "$vhost_html_list"
+}
+
+_generate_html_page() {
+    local template_file=$1
+    local output_file=$2
+    local domains_str=$(_list_domains_internal)
+
+    local html_content=$(_generate_html_content "$domains_str")
+
+    if [ ! -f "$template_file" ]; then
+        echo "Error: Template file '$template_file' not found." >&2
+        cat <<EOF > "$output_file"
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Available Services</title>
+<style>body{font-family:sans-serif;padding:20px;}ul{list-style:none;padding-left:0;}li{margin-bottom:5px;}a{text-decoration:none;color:#007bff;}.no-vhosts{font-style:italic;color:#777;}</style>
+</head>
+<body><h1>Available Services</h1>${html_content}<footer>Nginx Proxy</footer></body></html>
+EOF
+    else
+        awk -v marker="<!--VHOST_LIST_MARKER-->" -v content="$html_content" '
+        BEGIN { found=0 }
+        {
+            if (sub(marker, content)) {
+                found=1
+            }
+            print
+        }
+        END { if (!found) { print content } }
+        ' "$template_file" > "$output_file"
+    fi
+}
+
+_print_console() {
+    local domains_str=$(_list_domains_internal)
+
+    if [ -z "$domains_str" ]; then
+        echo "No server names found in the nginx configuration."
+        return 1
+    fi
+
+    local current_http_port_env="${HTTP_PORT:-80}"
+    local current_https_port_env="${HTTPS_PORT}"
+
+    local output_protocol="http"
+    local output_port_str=""
+
+    if [ -n "$current_https_port_env" ]; then
+        output_protocol="https"
+        if [ "$current_https_port_env" != "443" ]; then
+            output_port_str=":$current_https_port_env"
+        fi
+    else
+        if [ "$current_http_port_env" != "80" ]; then
+            output_port_str=":$current_http_port_env"
+        fi
+    fi
+
+    echo "$domains_str" | xargs -n1 | awk -F'.' '{
+        if (NF >= 2) { print $(NF-1) "." $NF "\t" $0 }
+        else { print $1 "\t" $0 }
+    }' | sort -k1,1 | awk -v GREEN="[1;32m" -v NC="[0m" -v PROTOCOL="$output_protocol" -v PORT_STR="$output_port_str" -F'\t' 'BEGIN {
+        CURRENT_GROUP=""
+        SERVICE_COUNT=1
     }
     {
-        if(x!=$1){ # Separation logic between different domains.
-            if(x!="") print "\n" y;
-            x=$1; y=GREEN $1 NC "\n"; i = 1;
+        if(CURRENT_GROUP != $1){
+            if(CURRENT_GROUP != "") printf "\n";
+            printf "%s%s%s\n", GREEN, $1, NC;
+            CURRENT_GROUP=$1;
+            SERVICE_COUNT=1;
         }
-        y = y format(i++, $2); # Append formatted output
-    } END{ print y }' # END clause to ensure the last part is also printed out.
+
+        display_name = $2
+        link_host = $2
+        if ( substr($2, 1, 2) == "*." ) {
+            link_host = substr($2, 3)
+        }
+        # Inlined format_link logic:
+        printf("	%d. %s (%s://%s%s)\n", SERVICE_COUNT++, display_name, PROTOCOL, link_host, PORT_STR);
+    } END { if(CURRENT_GROUP != "") print ""; }'
 }
 
-if [ -n "$HTTPS_PORT" ]; then
-	PORT=$(if [ "$HTTPS_PORT" -ne 443 ]; then echo ":$HTTPS_PORT"; else echo ""; fi)
-	PROTOCOL="https"
+# Main script logic
+if [ "$1" == "--html" ]; then
+    if [ -z "$2" ] || [ -z "$3" ]; then
+        echo "Usage: $0 --html <template_file_path> <output_file_path>" >&2
+        exit 1
+    fi
+    _generate_html_page "$2" "$3"
+elif [ "$1" == "--list" ]; then
+    _list_domains_internal || echo "No domains found"
+    exit 0
 else
-	PORT=""
-	PROTOCOL="http"
+    if ! _print_console; then
+        sleep $RETRY_INTERVAL
+        _print_console
+    fi
 fi
-
-# print the list of server names, if it fails, try again after N seconds (dont output error on first try)
-if [ "$1" == "--list" ]; then
-	list_domains
-	exit 0
-fi
-
-print  2>/dev/null || (sleep $RETRY_INTERVAL && print)

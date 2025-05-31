@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading Services</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; text-align: center; padding-top: 50px; background-color: #f4f4f4; color: #333; margin: 0; }
+        .container { max-width: 600px; margin: 20px auto; padding: 30px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px_10px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; }
+        p { font-size: 1.1em; color: #555; }
+        .spinner { margin: 20px auto; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Available Services</h1>
+        <p>The list of available services is currently being generated. Please wait a moment.</p>
+        <div class="spinner"></div>
+        <p><small>This page will refresh shortly, or try refreshing manually.</small></p>
+    </div>
+</body>
+</html>
