@@ -299,7 +299,6 @@ proxy_set_header Proxy "";
 # Server block for localhost
 server {
     server_name localhost;
-    server_tokens off; # Or use {{ $server_tokens }} if defined globally earlier
 
     listen {{ $globals.external_http_port }};
     {{- if $globals.enable_ipv6 }}
@@ -324,28 +323,15 @@ server {
 
     root /app; # Serve files from /app where current_vhosts.html etc. are
 
-    # Try to serve the dynamically generated vhost list, fallback to initial_loading_page.html
-    # If initial_loading_page.html is also missing, Nginx will return its own 404.
     location / {
         try_files /current_vhosts.html /initial_loading_page.html =404;
     }
-
-    # Access log for localhost (optional, can use global $globals.access_log)
-    access_log /var/log/nginx/access.log vhost; # Example specific log
-    # error_log /var/log/nginx/error.log; # Example specific error log
-
-    # Optional: include vhost.d configurations if needed for localhost, though unlikely
-    # if (exists "/etc/nginx/vhost.d/localhost") {
-    #    include "/etc/nginx/vhost.d/localhost";
-    # }
 }
 
 # Named location to handle 503 errors and serve the dynamic vhost page or a fallback
 location = /handler_for_503_error {
-    internal; # This location can only be reached by Nginx internal redirects (like from error_page)
-    root /app; # Files are in /app
-    # Try to serve the dynamic vhost list, fallback to a static error page
-    # If error_display_page.html is also missing, Nginx will return its own 500 (or whatever the result of missing internal file is).
+    internal;
+    root /app;
     try_files /current_vhosts.html /error_display_page.html =500;
 }
 

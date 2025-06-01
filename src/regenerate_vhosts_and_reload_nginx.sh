@@ -8,6 +8,10 @@ TEMPLATE_FILE="/app/vhost_list_template.html"
 OUTPUT_HTML_FILE="/app/current_vhosts.html"
 SHOW_VHOSTS_SCRIPT="/app/show-vhosts.sh"
 
+# Reload Nginx to apply the main configuration changes
+# (and make sure it picks up any new static files if relevant, though current_vhosts.html is already known)
+nginx -s reload
+
 # Generate the dynamic vhost page
 # Check if the template file exists, otherwise show-vhosts.sh will use its internal basic fallback
 if [ -f "$TEMPLATE_FILE" ]; then
@@ -19,9 +23,5 @@ else
     # For now, relying on show-vhosts.sh's internal fallback.
     "$SHOW_VHOSTS_SCRIPT" --html "$TEMPLATE_FILE" "$OUTPUT_HTML_FILE" # It will log template not found to stderr
 fi
-
-# Reload Nginx to apply the main configuration changes
-# (and make sure it picks up any new static files if relevant, though current_vhosts.html is already known)
-nginx -s reload
 
 exit 0
