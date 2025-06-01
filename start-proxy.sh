@@ -251,6 +251,7 @@ _show_vhosts() {
 		echo "-----------------------------------------------"
 		$RUNNER exec -it "$CONTAINER_NAME" /bin/bash -c "/app/show-vhosts.sh"
 		echo "-----------------------------------------------"
+		echo "You can see the list of vhosts at http://localhost:${INSECURE_PORT} or https://localhost:${SECURE_PORT}"
 	else
 		echo "Service not running. You can start it with ${bold}$0${normal}"
 	fi
