@@ -109,6 +109,108 @@
             font-size: 1.5em;
         }
 
+        /* Custom service icons */
+        .icon-service {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 0.25rem;
+            margin-right: 0.5rem;
+            font-size: 0.5rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .icon-api {
+            background-color: #3b82f6; /* blue-500 */
+        }
+
+        .icon-api:after {
+            content: "API";
+        }
+
+        .icon-fe {
+            background-color: #10b981; /* emerald-500 */
+        }
+
+        .icon-fe:after {
+            content: "FE";
+        }
+
+        .icon-cdn {
+            background-color: #f59e0b; /* amber-500 */
+        }
+
+        .icon-cdn:after {
+            content: "CDN";
+        }
+
+        .icon-docs {
+            background-color: #8b5cf6; /* violet-500 */
+        }
+
+        .icon-docs:after {
+            content: "DOC";
+        }
+
+        .icon-admin {
+            background-color: #ef4444; /* red-500 */
+        }
+
+        .icon-admin:after {
+            content: "IS";
+        }
+
+        .icon-mailpit {
+            background-color: #6366f1; /* indigo-500 */
+        }
+
+        .icon-mailpit:after {
+            content: "MAIL";
+        }
+
+        .icon-npm {
+            background-color: #ec4899; /* pink-500 */
+        }
+
+        .icon-npm:after {
+            content: "NPM";
+        }
+
+        .icon-producer {
+            background-color: #14b8a6; /* teal-500 */
+        }
+
+        .icon-producer:after {
+            content: "PROD";
+        }
+
+        .icon-rabbitmq {
+            background-color: #f97316; /* orange-500 */
+        }
+
+        .icon-rabbitmq:after {
+            content: "RMQ";
+        }
+
+        .icon-kafka {
+            background-color: #0ea5e9; /* sky-500 */
+        }
+
+        .icon-kafka:after {
+            content: "KFK";
+        }
+
+        .icon-default {
+            background-color: #64748b; /* slate-500 */
+        }
+
+        .icon-default:after {
+            content: "SVC";
+        }
+
         .collapsed .icon-expand:after {
             transform: rotate(-90deg);
         }
@@ -445,6 +547,40 @@
         let currentTheme = 'system'; // Default to system theme
         let totalVhosts = 0; // Track total number of vhosts
 
+        // Get service icon class based on domain prefix
+        function getServiceIconClass(hostname) {
+            // Extract the first part of the domain (before the first dot)
+            const prefix = hostname.split('.')[0].toLowerCase();
+
+            // Return the appropriate icon class based on the prefix
+            switch (prefix) {
+                case 'api': return 'icon-api';
+                case 'fe': return 'icon-fe';
+                case 'cdn': return 'icon-cdn';
+                case 'docs': return 'icon-docs';
+                case 'admin':
+                case 'is':
+                    return 'icon-admin';
+                case 'mailpit':
+                case 'mailhog':
+                case 'mailtrap':
+                case 'smtp':
+                case  'mail':
+                    return 'icon-mailpit';
+                case 'npm':
+                case 'node':
+                    return 'icon-npm';
+                case 'rabbitmq':
+                case 'rabbit':
+                case 'rmq':
+                    return 'icon-rabbitmq';
+                case 'kadeck':
+                case 'kafka':
+                    return 'icon-kafka';
+                default: return 'icon-default';
+            }
+        }
+
         // Get collapsed groups from localStorage
         function getCollapsedGroups() {
             const saved = localStorage.getItem(LOCALSTORAGE_COLLAPSED_GROUPS_KEY);
@@ -729,14 +865,27 @@
                     link.className = 'flex items-center gap-3 px-4 py-2 justify-between';
                     link.href = host.url;
 
+                    // Create service icon based on domain prefix
+                    const serviceIcon = document.createElement('span');
+                    const iconClass = getServiceIconClass(host.name);
+                    serviceIcon.className = `icon-service ${iconClass}`;
+
+                    // Create container for icon and text
+                    const contentContainer = document.createElement('div');
+                    contentContainer.className = 'flex items-center flex-1';
+
                     const span = document.createElement('span');
                     span.className = 'text-slate-800 dark:text-slate-200 text-sm font-medium leading-normal flex-1 truncate';
                     span.textContent = host.name;
 
+                    // Add service icon and text to container
+                    contentContainer.appendChild(serviceIcon);
+                    contentContainer.appendChild(span);
+
                     const icon = document.createElement('span');
                     icon.className = 'icon-arrow text-slate-400 dark:text-slate-500 text-xs';
 
-                    link.appendChild(span);
+                    link.appendChild(contentContainer);
                     link.appendChild(icon);
                     listItem.appendChild(link);
                     list.appendChild(listItem);
