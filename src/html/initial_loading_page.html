@@ -5,10 +5,15 @@
     <title>DevProxy Virtual Hosts</title>
     <link rel="icon" href="data:image/x-icon;base64," type="image/x-icon"/>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
     <style type="text/tailwindcss">
         @layer utilities {
             .list-item-hover {
-                @apply hover:bg-slate-800 dark:hover:bg-slate-800 hover:bg-opacity-50 dark:hover:bg-opacity-100 transition-colors duration-200;
+                @apply hover:bg-slate-200 dark:hover:bg-slate-700 hover:bg-opacity-50 dark:hover:bg-opacity-100 transition-colors duration-200;
             }
             .group-title {
                 @apply text-slate-700 dark:text-slate-300 text-lg font-semibold leading-tight tracking-tight p-3 cursor-pointer flex items-center justify-between;
@@ -42,6 +47,14 @@
             .dark .dark\:data-checked\:ring-transparent[data-checked] {
                 --tw-ring-color: transparent;
             }
+            /* Ensure icon color is visible in dark mode */
+            .dark #theme-toggle svg {
+                color: rgba(255, 255, 255, 0.9);
+            }
+            /* Improve contrast for selected item in dark mode */
+            .dark #theme-toggle [data-checked] svg {
+                color: white;
+            }
         }
     </style>
     <style>
@@ -58,10 +71,18 @@
             transition-timing-function: ease-out;
         }
 
+        /* Disable transitions temporarily when needed */
+        .notransition * {
+            transition: none !important;
+        }
+
         /* Material icons replacement with Unicode */
         .icon-help:after {
             content: "?";
             font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            text-align: center;
         }
 
         .icon-sync:after {
@@ -76,7 +97,7 @@
             content: "▼";
             display: inline-block;
             transition: transform 0.2s;
-            transform: rotate(-90deg);
+            transform: rotate(0deg);
         }
 
         .icon-arrow:after {
@@ -158,10 +179,142 @@
             width: 1.75rem;
             height: 1.75rem;
         }
+
+        /* Theme toggle enhancements */
+        #theme-toggle [role="radio"] {
+            position: relative;
+        }
+
+        #theme-toggle [role="radio"][data-checked]::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background-color: currentColor;
+            opacity: 0.5;
+        }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(15, 23, 42, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 0.5rem;
+            max-width: 90%;
+            width: 960px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(20px);
+            transition: transform 0.3s;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .modal-content {
+            background-color: rgb(30, 41, 59); /* slate-800 */
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+        }
+
+        .modal.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgb(226, 232, 240); /* slate-200 */
+        }
+
+        .dark .modal-header {
+            border-bottom: 1px solid rgb(51, 65, 85); /* slate-700 */
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: rgb(100, 116, 139); /* slate-500 */
+            transition: color 0.2s;
+        }
+
+        .dark .close-modal {
+            color: rgb(148, 163, 184); /* slate-400 */
+        }
+
+        .close-modal:hover {
+            color: rgb(15, 23, 42); /* slate-900 */
+        }
+
+        .dark .close-modal:hover {
+            color: rgb(255, 255, 255); /* white */
+        }
     </style>
 </head>
 <body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
     <div class="relative flex size-full min-h-screen flex-col group/design-root overflow-x-hidden">
+        <!-- Help Modal -->
+        <div id="help-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="text-slate-900 dark:text-slate-100 text-lg font-semibold leading-tight tracking-tight">Configuration Help</h3>
+                    <button class="close-modal" aria-label="Close modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <h4 class="text-slate-700 dark:text-slate-300 text-sm font-semibold leading-normal mb-3">Configure containers for proxy</h4>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm font-normal leading-relaxed mb-3">
+                        Configure containers in your <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-sm">docker-compose.yml</code> file by adding hostname, port, and protocol to environment variables:
+                    </p>
+                    <pre class="bg-slate-100 dark:bg-slate-900 p-3 rounded-md text-slate-700 dark:text-slate-300 text-sm mt-2 mb-4 overflow-x-auto"><code>services:
+          my-service:
+            networks:
+              proxy:
+            environment:
+              VIRTUAL_HOST: example.localhost
+              VIRTUAL_PORT: 80 # port of the service
+              VIRTUAL_PROTO: http # (valid options are https or http)</code></pre>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm font-normal leading-relaxed mb-3">
+                        For multiple domains on one service, separate with commas: <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-sm">VIRTUAL_HOST: example.localhost,example2.localhost</code>
+                    </p>
+                    <h4 class="text-slate-700 dark:text-slate-300 text-sm font-semibold leading-normal mt-5 mb-3">Network Configuration</h4>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm font-normal leading-relaxed mb-3">
+                        Add your service and container to the proxy network:
+                    </p>
+                    <pre class="bg-slate-100 dark:bg-slate-900 p-3 rounded-md text-slate-700 dark:text-slate-300 text-sm mt-2 overflow-x-auto"><code>networks:
+          proxy:
+            name: proxy_network # match the network name in the script</code></pre>
+                </div>
+            </div>
+        </div>
+
         <div class="flex h-full grow flex-col">
             <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-700 px-8 py-4 shadow-md bg-white dark:bg-slate-900">
                 <div class="flex items-center gap-3 text-slate-900 dark:text-slate-100">
@@ -178,15 +331,15 @@
                         <a class="text-blue-600 dark:text-blue-500 text-sm font-bold leading-normal border-b-2 border-blue-600 dark:border-blue-500 pb-1" href="#">Hosts</a>
                     </nav>
                     <div id="theme-toggle-container" class="relative">
-                        <div id="theme-toggle" class="relative z-0 inline-grid grid-cols-3 gap-0.5 rounded-full bg-gray-950/5 p-0.75 text-gray-950 dark:bg-white/10 dark:text-white" role="radiogroup">
-                            <span id="theme-system" class="rounded-full p-1.5 *:size-7 data-checked:bg-white data-checked:ring data-checked:inset-ring data-checked:ring-gray-950/10 data-checked:inset-ring-white/10 sm:p-0 dark:data-checked:bg-gray-700 dark:data-checked:text-white dark:data-checked:ring-transparent cursor-pointer" aria-label="System theme" role="radio" aria-checked="true" tabindex="0" data-theme="system" data-checked>
+                        <div id="theme-toggle" class="relative z-0 inline-grid grid-cols-3 gap-0.5 rounded-full bg-gray-950/5 p-0.75 text-gray-950 dark:bg-white/10 dark:text-white shadow-sm dark:shadow-inner" role="radiogroup">
+                            <span id="theme-system" class="rounded-full p-1.5 *:size-7 data-checked:bg-white data-checked:ring data-checked:inset-ring data-checked:ring-gray-950/10 data-checked:inset-ring-white/10 sm:p-0 dark:data-checked:bg-gray-700 dark:data-checked:text-white dark:data-checked:ring-transparent cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors" aria-label="System theme" role="radio" aria-checked="true" tabindex="0" data-theme="system" data-checked>
                                 <svg viewBox="0 0 28 28" fill="none">
                                     <path d="M7.5 8.5C7.5 7.94772 7.94772 7.5 8.5 7.5H19.5C20.0523 7.5 20.5 7.94772 20.5 8.5V16.5C20.5 17.0523 20.0523 17.5 19.5 17.5H8.5C7.94772 17.5 7.5 17.0523 7.5 16.5V8.5Z" stroke="currentColor"></path>
                                     <path d="M7.5 8.5C7.5 7.94772 7.94772 7.5 8.5 7.5H19.5C20.0523 7.5 20.5 7.94772 20.5 8.5V14.5C20.5 15.0523 20.0523 15.5 19.5 15.5H8.5C7.94772 15.5 7.5 15.0523 7.5 14.5V8.5Z" stroke="currentColor"></path>
                                     <path d="M16.5 20.5V17.5H11.5V20.5M16.5 20.5H11.5M16.5 20.5H17.5M11.5 20.5H10.5" stroke="currentColor" stroke-linecap="round"></path>
                                 </svg>
                             </span>
-                            <span id="theme-light" class="rounded-full p-1.5 *:size-7 data-checked:bg-white data-checked:ring data-checked:inset-ring data-checked:ring-gray-950/10 data-checked:inset-ring-white/10 sm:p-0 dark:data-checked:bg-gray-700 dark:data-checked:text-white dark:data-checked:ring-transparent cursor-pointer" aria-label="Light theme" role="radio" aria-checked="false" tabindex="-1" data-theme="light">
+                            <span id="theme-light" class="rounded-full p-1.5 *:size-7 data-checked:bg-white data-checked:ring data-checked:inset-ring data-checked:ring-gray-950/20 data-checked:inset-ring-white/10 sm:p-0 dark:data-checked:bg-gray-700 dark:data-checked:text-white dark:data-checked:ring-transparent cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors" aria-label="Light theme" role="radio" aria-checked="false" tabindex="-1" data-theme="light">
                                 <svg viewBox="0 0 28 28" fill="none">
                                     <circle cx="14" cy="14" r="3.5" stroke="currentColor"></circle>
                                     <path d="M14 8.5V6.5" stroke="currentColor" stroke-linecap="round"></path>
@@ -199,7 +352,7 @@
                                     <path d="M8.69663 8.69711L10.1108 10.1113" stroke="currentColor" stroke-linecap="round"></path>
                                 </svg>
                             </span>
-                            <span id="theme-dark" class="rounded-full p-1.5 *:size-7 data-checked:bg-white data-checked:ring data-checked:inset-ring data-checked:ring-gray-950/10 data-checked:inset-ring-white/10 sm:p-0 dark:data-checked:bg-gray-700 dark:data-checked:text-white dark:data-checked:ring-transparent cursor-pointer" aria-label="Dark theme" role="radio" aria-checked="false" tabindex="-1" data-theme="dark">
+                            <span id="theme-dark" class="rounded-full p-1.5 *:size-7 data-checked:bg-white data-checked:ring data-checked:inset-ring data-checked:ring-gray-950/10 data-checked:inset-ring-white/10 sm:p-0 dark:data-checked:bg-gray-700 dark:data-checked:text-white dark:data-checked:ring-transparent cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors" aria-label="Dark theme" role="radio" aria-checked="false" tabindex="-1" data-theme="dark">
                                 <svg viewBox="0 0 28 28" fill="none">
                                     <path d="M10.5 9.99914C10.5 14.1413 13.8579 17.4991 18 17.4991C19.0332 17.4991 20.0176 17.2902 20.9132 16.9123C19.7761 19.6075 17.109 21.4991 14 21.4991C9.85786 21.4991 6.5 18.1413 6.5 13.9991C6.5 10.8902 8.39167 8.22304 11.0868 7.08594C10.7089 7.98159 10.5 8.96597 10.5 9.99914Z" stroke="currentColor" stroke-linejoin="round"></path>
                                     <path d="M16.3561 6.50754L16.5 5.5L16.6439 6.50754C16.7068 6.94752 17.0525 7.29321 17.4925 7.35607L18.5 7.5L17.4925 7.64393C17.0525 7.70679 16.7068 8.05248 16.6439 8.49246L16.5 9.5L16.3561 8.49246C16.2932 8.05248 15.9475 7.70679 15.5075 7.64393L14.5 7.5L15.5075 7.35607C15.9475 7.29321 16.2932 6.94752 16.3561 6.50754Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -208,7 +361,7 @@
                             </span>
                         </div>
                     </div>
-                    <button aria-label="Help" class="flex items-center justify-center rounded-full h-10 w-10 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 transition-colors">
+                    <button id="help-button" aria-label="Help" class="flex items-center justify-center rounded-full h-10 w-10 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 transition-colors">
                         <span class="icon-help"></span>
                     </button>
                 </div>
@@ -233,7 +386,11 @@
                     <div id="no-hosts-state" class="hidden flex flex-col items-center justify-center py-12 text-center">
                         <span class="icon-public-off text-slate-400 dark:text-slate-500 mb-3 block"></span>
                         <h2 class="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-2">No virtual hosts found</h2>
-                        <p class="text-slate-600 dark:text-slate-400 text-base max-w-md">No virtual hosts are currently configured or available. Check your DevProxy configuration.</p>
+                        <p class="text-slate-600 dark:text-slate-400 text-base max-w-md mb-5">No virtual hosts are currently configured or available. Check your DevProxy configuration.</p>
+                        <button id="no-hosts-help-button" class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white transition-colors">
+                            <span class="icon-help"></span>
+                            <span>View Configuration Help</span>
+                        </button>
                     </div>
 
                     <!-- Hosts List -->
@@ -242,43 +399,7 @@
                     </div>
 
                     <footer class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
-                        <details class="group rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
-                            <summary class="flex cursor-pointer items-center justify-between gap-4 p-3 list-none">
-                                <h3 class="text-slate-700 dark:text-slate-300 text-sm font-medium leading-normal">Configuration Help</h3>
-                                <span class="icon-expand text-slate-500 dark:text-slate-400"></span>
-                            </summary>
-                            <div class="px-3 pb-3">
-                                <h4 class="text-slate-700 dark:text-slate-300 text-xs font-semibold leading-normal mb-2">Configure containers for proxy</h4>
-                                <p class="text-slate-600 dark:text-slate-400 text-xs font-normal leading-relaxed">
-                                    Configure containers in your <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">docker-compose.yml</code> file by adding hostname, port, and protocol to environment variables:
-                                </p>
-                                <pre class="bg-slate-100 dark:bg-slate-900 p-2 rounded-md text-slate-700 dark:text-slate-300 text-xs mt-2 overflow-x-auto"><code>services:
-  my-service:
-    networks:
-      proxy:
-    environment:
-      VIRTUAL_HOST: example.localhost
-      VIRTUAL_PORT: 80 # port of the service
-      VIRTUAL_PROTO: http # (valid options are https or http)</code></pre>
-                                <p class="text-slate-600 dark:text-slate-400 text-xs font-normal leading-relaxed mt-2">
-                                    For multiple domains on one service, separate with commas: <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">VIRTUAL_HOST: example.localhost,example2.localhost</code>
-                                </p>
-                                <h4 class="text-slate-700 dark:text-slate-300 text-xs font-semibold leading-normal mt-3 mb-2">Network Configuration</h4>
-                                <p class="text-slate-600 dark:text-slate-400 text-xs font-normal leading-relaxed">
-                                    Add your service and container to the proxy network:
-                                </p>
-                                <pre class="bg-slate-100 dark:bg-slate-900 p-2 rounded-md text-slate-700 dark:text-slate-300 text-xs mt-2 overflow-x-auto"><code>networks:
-  proxy:
-    name: proxy_network # match the network name in the script</code></pre>
-                                <h4 class="text-slate-700 dark:text-slate-300 text-xs font-semibold leading-normal mt-3 mb-2">Commands</h4>
-                                <p class="text-slate-600 dark:text-slate-400 text-xs font-normal leading-relaxed">
-                                    Available commands: <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">list</code>, <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">stop</code>, <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">update</code>, <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">uninstall</code>
-                                </p>
-                                <p class="text-slate-600 dark:text-slate-400 text-xs font-normal leading-relaxed mt-2">
-                                    Change exposed ports with: <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">./start-proxy.sh -s 8443 -i 8080</code>
-                                </p>
-                            </div>
-                        </details>
+                        <!-- Empty footer -->
                     </footer>
                 </div>
             </main>
@@ -300,6 +421,10 @@
         const refreshIcon = document.getElementById('refresh-icon');
         const themeToggle = document.getElementById('theme-toggle');
         const themeOptions = document.querySelectorAll('[role="radio"]');
+        const helpButton = document.getElementById('help-button');
+        const noHostsHelpButton = document.getElementById('no-hosts-help-button');
+        const helpModal = document.getElementById('help-modal');
+        const closeModalButton = document.querySelector('.close-modal');
 
         // App state
         let lastData = null;
@@ -364,7 +489,6 @@
         // Set theme (light, dark, or system)
         function setTheme(theme) {
             const html = document.documentElement;
-            const prefersDark = localStorage.getItem(LOCALSTORAGE_THEME_KEY) === 'dark' || (!(LOCALSTORAGE_THEME_KEY in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
             // Update current theme
             currentTheme = theme;
@@ -372,12 +496,20 @@
             // Apply theme
             if (theme === 'system') {
                 // Use system preference
-                html.classList.toggle('dark', prefersDark);
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (prefersDark) {
+                    html.classList.add('dark');
+                } else {
+                    html.classList.remove('dark');
+                }
                 localStorage.removeItem(LOCALSTORAGE_THEME_KEY);
             } else {
                 // Use selected theme
-                const isDark = theme === 'dark';
-                html.classList.toggle('dark', isDark);
+                if (theme === 'dark') {
+                    html.classList.add('dark');
+                } else {
+                    html.classList.remove('dark');
+                }
                 localStorage.setItem(LOCALSTORAGE_THEME_KEY, theme);
             }
 
@@ -407,17 +539,32 @@
         function initializeTheme() {
             // Check for saved theme preference
             const savedTheme = localStorage.getItem(LOCALSTORAGE_THEME_KEY);
+            const html = document.documentElement;
 
-            if (savedTheme) {
-                // Use saved preference
-                currentTheme = savedTheme;
+            // Disable transitions during initial theme setting
+            html.classList.add('notransition');
+
+            if (savedTheme === 'dark') {
+                html.classList.add('dark');
+                currentTheme = 'dark';
+            } else if (savedTheme === 'light') {
+                html.classList.remove('dark');
+                currentTheme = 'light';
             } else {
-                // Use system preference
+                // System preference
                 currentTheme = 'system';
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                html.classList.toggle('dark', prefersDark);
             }
 
-            // Apply theme
-            setTheme(currentTheme);
+            // Force a reflow to apply the changes immediately
+            void html.offsetHeight;
+
+            // Re-enable transitions
+            html.classList.remove('notransition');
+
+            // Update the theme UI
+            updateThemeUI();
         }
 
         // Start auto refresh
@@ -460,10 +607,10 @@
 
                 hosts.forEach(host => {
                     const listItem = document.createElement('li');
-                    listItem.className = 'list-item-hover hover:bg-slate-100 dark:hover:bg-slate-700';
+                    listItem.className = 'list-item-hover';
 
                     const link = document.createElement('a');
-                    link.className = 'flex items-center gap-3 px-4 py-2 justify-between bg-white dark:bg-slate-900';
+                    link.className = 'flex items-center gap-3 px-4 py-2 justify-between';
                     link.href = host.url;
 
                     const span = document.createElement('span');
@@ -571,20 +718,45 @@
             // Set up periodic refresh
             startAutoRefresh();
 
-            // Add event listener for details element
-            document.querySelector('details.group').addEventListener('toggle', function() {
-                if (this.open) {
-                    this.classList.add('open');
-                } else {
-                    this.classList.remove('open');
-                }
-            });
+            // Modal has replaced the details element
 
             // Listen for OS theme changes
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
                 // Only apply if theme is set to system
                 if (currentTheme === 'system') {
                     document.documentElement.classList.toggle('dark', event.matches);
+                }
+            });
+
+            // Modal functionality
+            function showHelpModal() {
+                helpModal.classList.add('active');
+                // Prevent scrolling on the background
+                document.body.style.overflow = 'hidden';
+            }
+
+            helpButton.addEventListener('click', showHelpModal);
+            noHostsHelpButton.addEventListener('click', showHelpModal);
+
+            closeModalButton.addEventListener('click', () => {
+                helpModal.classList.remove('active');
+                // Restore scrolling
+                document.body.style.overflow = '';
+            });
+
+            // Close modal when clicking outside of modal content
+            helpModal.addEventListener('click', (event) => {
+                if (event.target === helpModal) {
+                    helpModal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && helpModal.classList.contains('active')) {
+                    helpModal.classList.remove('active');
+                    document.body.style.overflow = '';
                 }
             });
         }
