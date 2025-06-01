@@ -370,9 +370,19 @@
                 <div class="flex flex-col w-full max-w-4xl flex-1">
                     <header class="flex flex-wrap justify-between items-center gap-4 p-3 mb-4 border-b border-slate-200 dark:border-slate-700 pb-3">
                         <h1 class="text-slate-900 dark:text-slate-100 text-2xl font-bold leading-tight tracking-tight">Virtual Hosts</h1>
-                        <div id="refresh-control" class="flex items-center gap-2 text-xs status-indicator active" title="Click to toggle auto-refresh">
-                            <span id="refresh-icon" class="icon-sync"></span>
-                            <span id="status-text">Auto-refreshing</span>
+                        <div class="flex items-center gap-4">
+                            <div id="collapse-controls" class="hidden flex items-center gap-2 text-xs">
+                                <button id="expand-all" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-md transition-colors text-xs">
+                                    Expand All
+                                </button>
+                                <button id="collapse-all" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-md transition-colors text-xs">
+                                    Collapse All
+                                </button>
+                            </div>
+                            <div id="refresh-control" class="flex items-center gap-2 text-xs status-indicator active" title="Click to toggle auto-refresh">
+                                <span id="refresh-icon" class="icon-sync"></span>
+                                <span id="status-text">Auto-refreshing</span>
+                            </div>
                         </div>
                     </header>
 
@@ -411,6 +421,8 @@
         const VHOSTS_URL = '/vhosts.json';
         const REFRESH_INTERVAL = 5000; // 5 seconds
         const LOCALSTORAGE_THEME_KEY = 'devproxy-theme';
+        const LOCALSTORAGE_COLLAPSED_GROUPS_KEY = 'devproxy-collapsed-groups';
+        const COLLAPSE_THRESHOLD = 16; // Collapse groups if total vhosts exceed this number
 
         // DOM Elements
         const loadingState = document.getElementById('loading-state');
@@ -431,6 +443,13 @@
         let autoRefreshEnabled = true;
         let refreshIntervalId = null;
         let currentTheme = 'system'; // Default to system theme
+        let totalVhosts = 0; // Track total number of vhosts
+
+        // Get collapsed groups from localStorage
+        function getCollapsedGroups() {
+            const saved = localStorage.getItem(LOCALSTORAGE_COLLAPSED_GROUPS_KEY);
+            return saved ? JSON.parse(saved) : [];
+        }
 
         // Extract base domain from hostname
         function getBaseDomain(hostname) {
@@ -464,7 +483,41 @@
 
         // Toggle collapsible section
         function toggleSection(section) {
+            const domain = section.getAttribute('data-domain');
             section.classList.toggle('collapsed');
+
+            // Update localStorage
+            if (domain) {
+                const collapsedGroups = getCollapsedGroups();
+                const expandedMarker = `expanded:${domain}`;
+
+                if (section.classList.contains('collapsed')) {
+                    // Add to collapsed groups
+                    if (!collapsedGroups.includes(domain)) {
+                        collapsedGroups.push(domain);
+                    }
+
+                    // Remove from expanded markers if exists
+                    const expandedIndex = collapsedGroups.indexOf(expandedMarker);
+                    if (expandedIndex !== -1) {
+                        collapsedGroups.splice(expandedIndex, 1);
+                    }
+                } else {
+                    // Remove from collapsed groups
+                    const index = collapsedGroups.indexOf(domain);
+                    if (index !== -1) {
+                        collapsedGroups.splice(index, 1);
+                    }
+
+                    // If we're above threshold, add expanded marker
+                    if (totalVhosts > COLLAPSE_THRESHOLD && !collapsedGroups.includes(expandedMarker)) {
+                        collapsedGroups.push(expandedMarker);
+                    }
+                }
+
+                // Save updated state
+                localStorage.setItem(LOCALSTORAGE_COLLAPSED_GROUPS_KEY, JSON.stringify(collapsedGroups));
+            }
         }
 
         // Toggle auto-refresh
@@ -581,20 +634,83 @@
             }
         }
 
+        // Expand all groups
+        function expandAllGroups() {
+            const sections = document.querySelectorAll('[data-domain]');
+            const collapsedGroups = getCollapsedGroups();
+            const expandedGroups = [];
+
+            sections.forEach(section => {
+                const domain = section.getAttribute('data-domain');
+                if (section.classList.contains('collapsed')) {
+                    section.classList.remove('collapsed');
+                }
+
+                // Add expanded marker
+                expandedGroups.push(`expanded:${domain}`);
+
+                // Remove from collapsed groups if present
+                const index = collapsedGroups.indexOf(domain);
+                if (index !== -1) {
+                    collapsedGroups.splice(index, 1);
+                }
+            });
+
+            // Save updated state with expanded markers
+            localStorage.setItem(LOCALSTORAGE_COLLAPSED_GROUPS_KEY,
+                JSON.stringify([...collapsedGroups.filter(g => !g.startsWith('expanded:')), ...expandedGroups]));
+        }
+
+        // Collapse all groups
+        function collapseAllGroups() {
+            const sections = document.querySelectorAll('[data-domain]');
+            const domains = [];
+
+            sections.forEach(section => {
+                const domain = section.getAttribute('data-domain');
+                if (!section.classList.contains('collapsed')) {
+                    section.classList.add('collapsed');
+                }
+                domains.push(domain);
+            });
+
+            // Save only the domain names (no expanded markers)
+            localStorage.setItem(LOCALSTORAGE_COLLAPSED_GROUPS_KEY,
+                JSON.stringify(domains.filter(d => d)));
+        }
+
         // Render the hosts list
         function renderHostsList(groups) {
             hostsContainer.innerHTML = '';
+
+            // Calculate total vhosts count
+            totalVhosts = Object.values(groups).reduce((sum, hosts) => sum + hosts.length, 0);
+
+            // Get saved collapsed state
+            const collapsedGroups = getCollapsedGroups();
+
+            // Determine if groups should be collapsed by default (when total vhosts > threshold)
+            const collapseByDefault = totalVhosts > COLLAPSE_THRESHOLD;
 
             Object.keys(groups).sort().forEach(domain => {
                 const hosts = groups[domain];
 
                 const section = document.createElement('section');
-                section.className = 'bg-white dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-lg mb-3 overflow-hidden collapsed';
+                section.setAttribute('data-domain', domain);
+                section.className = 'bg-white dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-lg mb-3 overflow-hidden';
+
+                // Check if this group should be collapsed
+                const isCollapsed = collapsedGroups.includes(domain) ||
+                                  (collapseByDefault && !collapsedGroups.includes(`expanded:${domain}`));
+
+                if (isCollapsed) {
+                    section.classList.add('collapsed');
+                }
 
                 const heading = document.createElement('div');
                 heading.className = 'group-title';
                 heading.innerHTML = `
-                    <span>${domain}</span>
+                    <span>${domain} <small class="text-sm text-slate-500 dark:text-slate-400 ml-2">(${hosts.length})</small></span>
                     <span class="icon-expand text-slate-500 dark:text-slate-400"></span>
                 `;
                 heading.addEventListener('click', () => toggleSection(section));
@@ -635,6 +751,14 @@
             // Update the UI state
             loadingState.classList.add('hidden');
             hostsContainer.classList.remove('hidden');
+
+            // Show/hide collapse controls based on number of groups
+            const collapseControls = document.getElementById('collapse-controls');
+            if (Object.keys(groups).length > 1 || totalVhosts > COLLAPSE_THRESHOLD) {
+                collapseControls.classList.remove('hidden');
+            } else {
+                collapseControls.classList.add('hidden');
+            }
         }
 
         // Check for vhosts.json and handle the data
@@ -659,6 +783,18 @@
                     if (currentData !== lastData) {
                         console.log('Hosts data changed, updating UI');
                         const groupedHosts = groupHostsByDomain(data);
+
+                        // Before rendering, handle special case for collapse threshold change
+                        const prevTotalVhosts = totalVhosts;
+                        const newTotalVhosts = Object.values(groupedHosts).reduce((sum, hosts) => sum + hosts.length, 0);
+
+                        // If crossing the threshold, update localStorage with appropriate values
+                        if ((prevTotalVhosts <= COLLAPSE_THRESHOLD && newTotalVhosts > COLLAPSE_THRESHOLD) ||
+                            (prevTotalVhosts > COLLAPSE_THRESHOLD && newTotalVhosts <= COLLAPSE_THRESHOLD)) {
+                            // Reset collapsed groups when crossing the threshold
+                            localStorage.setItem(LOCALSTORAGE_COLLAPSED_GROUPS_KEY, JSON.stringify([]));
+                        }
+
                         renderHostsList(groupedHosts);
                     }
 
@@ -711,6 +847,10 @@
 
             // Add event listener for refresh control
             refreshControl.addEventListener('click', toggleAutoRefresh);
+
+            // Add event listeners for expand/collapse all buttons
+            document.getElementById('expand-all').addEventListener('click', expandAllGroups);
+            document.getElementById('collapse-all').addEventListener('click', collapseAllGroups);
 
             // Initial check
             checkForVhosts();
