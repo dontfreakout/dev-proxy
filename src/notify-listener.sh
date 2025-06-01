@@ -9,4 +9,6 @@ if [ -n "$AUTOCERT" ]; then
     ./auto-cert.sh
 fi
 
+./show-vhosts.sh --json > html/vhosts.json
+
 _reload_nginx

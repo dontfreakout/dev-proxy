@@ -1,13 +1,15 @@
 FROM nginxproxy/nginx-proxy:1.2.2
 LABEL version="1.2.2"
 
+RUN apt-get update && apt-get install -y \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY ./src/dev_proxy.conf /etc/nginx/conf.d/dev_proxy.conf
 
 # New files for dynamic vhost page
-COPY ./src/vhost_list_template.html /app/vhost_list_template.html
-COPY ./src/initial_loading_page.html /app/initial_loading_page.html
-COPY ./src/error_display_page.html /app/error_display_page.html
-COPY ./src/regenerate_vhosts_and_reload_nginx.sh /app/regenerate_vhosts_and_reload_nginx.sh
+
+COPY ./src/html /app/html
 
 # Original file copies
 COPY ./src/auto-cert.sh /app/
@@ -20,7 +22,6 @@ COPY ./src/show-vhosts.sh /app/
 RUN chmod +x /app/auto-cert.sh
 RUN chmod +x /app/notify-listener.sh
 RUN chmod +x /app/show-vhosts.sh
-RUN chmod +x /app/regenerate_vhosts_and_reload_nginx.sh
 
 # Find 'exec "$@"' in the original entrypoint.sh and prepend it with
 RUN sed -Ei 's/^(exec "\$@")$/if [ -n "\$AUTOCERT" ]; then\n  .\/auto-cert.sh;\nfi\n\1/g' /app/docker-entrypoint.sh

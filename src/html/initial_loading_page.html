@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="utf-8"/>
+    <title>DevProxy Virtual Hosts</title>
+    <link rel="icon" href="data:image/x-icon;base64," type="image/x-icon"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .list-item-hover {
+                @apply hover:bg-slate-800 dark:hover:bg-slate-800 hover:bg-opacity-50 dark:hover:bg-opacity-100 transition-colors duration-200;
+            }
+            .group-title {
+                @apply text-slate-700 dark:text-slate-300 text-lg font-semibold leading-tight tracking-tight p-3 cursor-pointer flex items-center justify-between;
+            }
+            .data-checked\:bg-white[data-checked] {
+                --tw-bg-opacity: 1;
+                background-color: rgb(255 255 255 / var(--tw-bg-opacity));
+            }
+            .data-checked\:ring[data-checked] {
+                --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+                --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+                box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+            }
+            .data-checked\:inset-ring[data-checked] {
+                --tw-ring-inset: inset;
+            }
+            .data-checked\:ring-gray-950\/10[data-checked] {
+                --tw-ring-color: rgb(3 7 18 / 0.1);
+            }
+            .data-checked\:inset-ring-white\/10[data-checked] {
+                --tw-ring-color: rgb(255 255 255 / 0.1);
+            }
+            .dark .dark\:data-checked\:bg-gray-700[data-checked] {
+                --tw-bg-opacity: 1;
+                background-color: rgb(55 65 81 / var(--tw-bg-opacity));
+            }
+            .dark .dark\:data-checked\:text-white[data-checked] {
+                --tw-text-opacity: 1;
+                color: rgb(255 255 255 / var(--tw-text-opacity));
+            }
+            .dark .dark\:data-checked\:ring-transparent[data-checked] {
+                --tw-ring-color: transparent;
+            }
+        }
+    </style>
+    <style>
+        /* Use system fonts instead of external fonts */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+        }
+
+        /* Theme transition */
+        body, button, a, div, span, header, footer, main, section {
+            transition-property: color, background-color, border-color, box-shadow;
+            transition-duration: 150ms;
+            transition-timing-function: ease-out;
+        }
+
+        /* Material icons replacement with Unicode */
+        .icon-help:after {
+            content: "?";
+            font-weight: bold;
+        }
+
+        .icon-sync:after {
+            content: "↻";
+        }
+
+        .icon-pause:after {
+            content: "⏸";
+        }
+
+        .icon-expand:after {
+            content: "▼";
+            display: inline-block;
+            transition: transform 0.2s;
+            transform: rotate(-90deg);
+        }
+
+        .icon-arrow:after {
+            content: "→";
+        }
+
+        .icon-public-off:after {
+            content: "⊗";
+            font-size: 1.5em;
+        }
+
+        .collapsed .icon-expand:after {
+            transform: rotate(-90deg);
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(203, 213, 225, 0.1);
+            border-top: 3px solid #3b82f6; /* blue-500 */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .dark .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #3b82f6; /* blue-500 */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .group.open .icon-expand:after {
+            transform: rotate(0deg);
+        }
+
+        /* Collapsible sections */
+        .collapsible-content {
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .collapsed .collapsible-content {
+            max-height: 0;
+        }
+
+        .status-indicator {
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            transition: background-color 0.2s;
+        }
+
+        .status-indicator:hover {
+            background-color: rgba(100, 116, 139, 0.1);
+        }
+
+        .dark .status-indicator:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .status-indicator.paused {
+            color: #64748b; /* slate-500 */
+        }
+
+        .dark .status-indicator.paused {
+            color: #94a3b8; /* slate-400 */
+        }
+
+        .status-indicator.active {
+            color: #3b82f6; /* blue-500 */
+        }
+
+        /* Size utility */
+        .\*\:size-7 > * {
+            width: 1.75rem;
+            height: 1.75rem;
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+    <div class="relative flex size-full min-h-screen flex-col group/design-root overflow-x-hidden">
+        <div class="flex h-full grow flex-col">
+            <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-700 px-8 py-4 shadow-md bg-white dark:bg-slate-900">
+                <div class="flex items-center gap-3 text-slate-900 dark:text-slate-100">
+                    <div class="size-7 text-blue-500">
+                        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13.8261 30.5736C16.7203 29.8826 20.2244 29.4783 24 29.4783C27.7756 29.4783 31.2797 29.8826 34.1739 30.5736C36.9144 31.2278 39.9967 32.7669 41.3563 33.8352L24.8486 7.36089C24.4571 6.73303 23.5429 6.73303 23.1514 7.36089L6.64374 33.8352C8.00331 32.7669 11.0856 31.2278 13.8261 30.5736Z" fill="currentColor"></path>
+                            <path clip-rule="evenodd" d="M39.998 35.764C39.9944 35.7463 39.9875 35.7155 39.9748 35.6706C39.9436 35.5601 39.8949 35.4259 39.8346 35.2825C39.8168 35.2403 39.7989 35.1993 39.7813 35.1602C38.5103 34.2887 35.9788 33.0607 33.7095 32.5189C30.9875 31.8691 27.6413 31.4783 24 31.4783C20.3587 31.4783 17.0125 31.8691 14.2905 32.5189C12.0012 33.0654 9.44505 34.3104 8.18538 35.1832C8.17384 35.2075 8.16216 35.233 8.15052 35.2592C8.09919 35.3751 8.05721 35.4886 8.02977 35.589C8.00356 35.6848 8.00039 35.7333 8.00004 35.7388C8.00004 35.739 8 35.7393 8.00004 35.7388C8.00004 35.7641 8.0104 36.0767 8.68485 36.6314C9.34546 37.1746 10.4222 37.7531 11.9291 38.2772C14.9242 39.319 19.1919 40 24 40C28.8081 40 33.0758 39.319 36.0709 38.2772C37.5778 37.7531 38.6545 37.1746 39.3151 36.6314C39.9006 36.1499 39.9857 35.8511 39.998 35.764ZM4.95178 32.7688L21.4543 6.30267C22.6288 4.4191 25.3712 4.41909 26.5457 6.30267L43.0534 32.777C43.0709 32.8052 43.0878 32.8338 43.104 32.8629L41.3563 33.8352C43.104 32.8629 43.1038 32.8626 43.104 32.8629L43.1051 32.865L43.1065 32.8675L43.1101 32.8739L43.1199 32.8918C43.1276 32.906 43.1377 32.9246 43.1497 32.9473C43.1738 32.9925 43.2062 33.0545 43.244 33.1299C43.319 33.2792 43.4196 33.489 43.5217 33.7317C43.6901 34.1321 44 34.9311 44 35.7391C44 37.4427 43.003 38.7775 41.8558 39.7209C40.6947 40.6757 39.1354 41.4464 37.385 42.0552C33.8654 43.2794 29.133 44 24 44C18.867 44 14.1346 43.2794 10.615 42.0552C8.86463 41.4464 7.30529 40.6757 6.14419 39.7209C4.99695 38.7775 3.99999 37.4427 3.99999 35.7391C3.99999 34.8725 4.29264 34.0922 4.49321 33.6393C4.60375 33.3898 4.71348 33.1804 4.79687 33.0311C4.83898 32.9556 4.87547 32.8935 4.9035 32.8471C4.91754 32.8238 4.92954 32.8043 4.93916 32.7889L4.94662 32.777L4.95178 32.7688ZM35.9868 29.004L24 9.77997L12.0131 29.004C12.4661 28.8609 12.9179 28.7342 13.3617 28.6282C16.4281 27.8961 20.0901 27.4783 24 27.4783C27.9099 27.4783 31.5719 27.8961 34.6383 28.6282C35.082 28.7342 35.5339 28.8609 35.9868 29.004Z" fill="currentColor" fill-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight tracking-tight">DevProxy</h1>
+                </div>
+                <div class="flex flex-1 justify-end items-center gap-6">
+                    <nav class="flex items-center gap-6">
+                        <a class="text-blue-600 dark:text-blue-500 text-sm font-bold leading-normal border-b-2 border-blue-600 dark:border-blue-500 pb-1" href="#">Hosts</a>
+                    </nav>
+                    <div id="theme-toggle-container" class="relative">
+                        <div id="theme-toggle" class="relative z-0 inline-grid grid-cols-3 gap-0.5 rounded-full bg-gray-950/5 p-0.75 text-gray-950 dark:bg-white/10 dark:text-white" role="radiogroup">
+                            <span id="theme-system" class="rounded-full p-1.5 *:size-7 data-checked:bg-white data-checked:ring data-checked:inset-ring data-checked:ring-gray-950/10 data-checked:inset-ring-white/10 sm:p-0 dark:data-checked:bg-gray-700 dark:data-checked:text-white dark:data-checked:ring-transparent cursor-pointer" aria-label="System theme" role="radio" aria-checked="true" tabindex="0" data-theme="system" data-checked>
+                                <svg viewBox="0 0 28 28" fill="none">
+                                    <path d="M7.5 8.5C7.5 7.94772 7.94772 7.5 8.5 7.5H19.5C20.0523 7.5 20.5 7.94772 20.5 8.5V16.5C20.5 17.0523 20.0523 17.5 19.5 17.5H8.5C7.94772 17.5 7.5 17.0523 7.5 16.5V8.5Z" stroke="currentColor"></path>
+                                    <path d="M7.5 8.5C7.5 7.94772 7.94772 7.5 8.5 7.5H19.5C20.0523 7.5 20.5 7.94772 20.5 8.5V14.5C20.5 15.0523 20.0523 15.5 19.5 15.5H8.5C7.94772 15.5 7.5 15.0523 7.5 14.5V8.5Z" stroke="currentColor"></path>
+                                    <path d="M16.5 20.5V17.5H11.5V20.5M16.5 20.5H11.5M16.5 20.5H17.5M11.5 20.5H10.5" stroke="currentColor" stroke-linecap="round"></path>
+                                </svg>
+                            </span>
+                            <span id="theme-light" class="rounded-full p-1.5 *:size-7 data-checked:bg-white data-checked:ring data-checked:inset-ring data-checked:ring-gray-950/10 data-checked:inset-ring-white/10 sm:p-0 dark:data-checked:bg-gray-700 dark:data-checked:text-white dark:data-checked:ring-transparent cursor-pointer" aria-label="Light theme" role="radio" aria-checked="false" tabindex="-1" data-theme="light">
+                                <svg viewBox="0 0 28 28" fill="none">
+                                    <circle cx="14" cy="14" r="3.5" stroke="currentColor"></circle>
+                                    <path d="M14 8.5V6.5" stroke="currentColor" stroke-linecap="round"></path>
+                                    <path d="M17.889 10.1115L19.3032 8.69727" stroke="currentColor" stroke-linecap="round"></path>
+                                    <path d="M19.5 14L21.5 14" stroke="currentColor" stroke-linecap="round"></path>
+                                    <path d="M17.889 17.8885L19.3032 19.3027" stroke="currentColor" stroke-linecap="round"></path>
+                                    <path d="M14 21.5V19.5" stroke="currentColor" stroke-linecap="round"></path>
+                                    <path d="M8.69663 19.3029L10.1108 17.8887" stroke="currentColor" stroke-linecap="round"></path>
+                                    <path d="M6.5 14L8.5 14" stroke="currentColor" stroke-linecap="round"></path>
+                                    <path d="M8.69663 8.69711L10.1108 10.1113" stroke="currentColor" stroke-linecap="round"></path>
+                                </svg>
+                            </span>
+                            <span id="theme-dark" class="rounded-full p-1.5 *:size-7 data-checked:bg-white data-checked:ring data-checked:inset-ring data-checked:ring-gray-950/10 data-checked:inset-ring-white/10 sm:p-0 dark:data-checked:bg-gray-700 dark:data-checked:text-white dark:data-checked:ring-transparent cursor-pointer" aria-label="Dark theme" role="radio" aria-checked="false" tabindex="-1" data-theme="dark">
+                                <svg viewBox="0 0 28 28" fill="none">
+                                    <path d="M10.5 9.99914C10.5 14.1413 13.8579 17.4991 18 17.4991C19.0332 17.4991 20.0176 17.2902 20.9132 16.9123C19.7761 19.6075 17.109 21.4991 14 21.4991C9.85786 21.4991 6.5 18.1413 6.5 13.9991C6.5 10.8902 8.39167 8.22304 11.0868 7.08594C10.7089 7.98159 10.5 8.96597 10.5 9.99914Z" stroke="currentColor" stroke-linejoin="round"></path>
+                                    <path d="M16.3561 6.50754L16.5 5.5L16.6439 6.50754C16.7068 6.94752 17.0525 7.29321 17.4925 7.35607L18.5 7.5L17.4925 7.64393C17.0525 7.70679 16.7068 8.05248 16.6439 8.49246L16.5 9.5L16.3561 8.49246C16.2932 8.05248 15.9475 7.70679 15.5075 7.64393L14.5 7.5L15.5075 7.35607C15.9475 7.29321 16.2932 6.94752 16.3561 6.50754Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <path d="M20.3561 11.5075L20.5 10.5L20.6439 11.5075C20.7068 11.9475 21.0525 12.2932 21.4925 12.3561L22.5 12.5L21.4925 12.6439C21.0525 12.7068 20.7068 13.0525 20.6439 13.4925L20.5 14.5L20.3561 13.4925C20.2932 13.0525 19.9475 12.7068 19.5075 12.6439L18.5 12.5L19.5075 12.3561C19.9475 12.2932 20.2932 11.9475 20.3561 11.5075Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+                    <button aria-label="Help" class="flex items-center justify-center rounded-full h-10 w-10 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 transition-colors">
+                        <span class="icon-help"></span>
+                    </button>
+                </div>
+            </header>
+            <main class="px-6 md:px-12 lg:px-16 xl:px-24 flex flex-1 justify-center py-6 bg-slate-50 dark:bg-slate-900">
+                <div class="flex flex-col w-full max-w-4xl flex-1">
+                    <header class="flex flex-wrap justify-between items-center gap-4 p-3 mb-4 border-b border-slate-200 dark:border-slate-700 pb-3">
+                        <h1 class="text-slate-900 dark:text-slate-100 text-2xl font-bold leading-tight tracking-tight">Virtual Hosts</h1>
+                        <div id="refresh-control" class="flex items-center gap-2 text-xs status-indicator active" title="Click to toggle auto-refresh">
+                            <span id="refresh-icon" class="icon-sync"></span>
+                            <span id="status-text">Auto-refreshing</span>
+                        </div>
+                    </header>
+
+                    <!-- Loading State -->
+                    <div id="loading-state" class="flex flex-col items-center justify-center py-12">
+                        <div class="spinner mb-4"></div>
+                        <p class="text-slate-600 dark:text-slate-400 text-base">Loading available virtual hosts...</p>
+                    </div>
+
+                    <!-- No Hosts State -->
+                    <div id="no-hosts-state" class="hidden flex flex-col items-center justify-center py-12 text-center">
+                        <span class="icon-public-off text-slate-400 dark:text-slate-500 mb-3 block"></span>
+                        <h2 class="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-2">No virtual hosts found</h2>
+                        <p class="text-slate-600 dark:text-slate-400 text-base max-w-md">No virtual hosts are currently configured or available. Check your DevProxy configuration.</p>
+                    </div>
+
+                    <!-- Hosts List -->
+                    <div id="hosts-container" class="hidden space-y-3">
+                        <!-- Dynamic content will be inserted here -->
+                    </div>
+
+                    <footer class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                        <details class="group rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
+                            <summary class="flex cursor-pointer items-center justify-between gap-4 p-3 list-none">
+                                <h3 class="text-slate-700 dark:text-slate-300 text-sm font-medium leading-normal">Configuration Help</h3>
+                                <span class="icon-expand text-slate-500 dark:text-slate-400"></span>
+                            </summary>
+                            <div class="px-3 pb-3">
+                                <h4 class="text-slate-700 dark:text-slate-300 text-xs font-semibold leading-normal mb-2">Configure containers for proxy</h4>
+                                <p class="text-slate-600 dark:text-slate-400 text-xs font-normal leading-relaxed">
+                                    Configure containers in your <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">docker-compose.yml</code> file by adding hostname, port, and protocol to environment variables:
+                                </p>
+                                <pre class="bg-slate-100 dark:bg-slate-900 p-2 rounded-md text-slate-700 dark:text-slate-300 text-xs mt-2 overflow-x-auto"><code>services:
+  my-service:
+    networks:
+      proxy:
+    environment:
+      VIRTUAL_HOST: example.localhost
+      VIRTUAL_PORT: 80 # port of the service
+      VIRTUAL_PROTO: http # (valid options are https or http)</code></pre>
+                                <p class="text-slate-600 dark:text-slate-400 text-xs font-normal leading-relaxed mt-2">
+                                    For multiple domains on one service, separate with commas: <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">VIRTUAL_HOST: example.localhost,example2.localhost</code>
+                                </p>
+                                <h4 class="text-slate-700 dark:text-slate-300 text-xs font-semibold leading-normal mt-3 mb-2">Network Configuration</h4>
+                                <p class="text-slate-600 dark:text-slate-400 text-xs font-normal leading-relaxed">
+                                    Add your service and container to the proxy network:
+                                </p>
+                                <pre class="bg-slate-100 dark:bg-slate-900 p-2 rounded-md text-slate-700 dark:text-slate-300 text-xs mt-2 overflow-x-auto"><code>networks:
+  proxy:
+    name: proxy_network # match the network name in the script</code></pre>
+                                <h4 class="text-slate-700 dark:text-slate-300 text-xs font-semibold leading-normal mt-3 mb-2">Commands</h4>
+                                <p class="text-slate-600 dark:text-slate-400 text-xs font-normal leading-relaxed">
+                                    Available commands: <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">list</code>, <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">stop</code>, <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">update</code>, <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">uninstall</code>
+                                </p>
+                                <p class="text-slate-600 dark:text-slate-400 text-xs font-normal leading-relaxed mt-2">
+                                    Change exposed ports with: <code class="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-xs">./start-proxy.sh -s 8443 -i 8080</code>
+                                </p>
+                            </div>
+                        </details>
+                    </footer>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const VHOSTS_URL = '/vhosts.json';
+        const REFRESH_INTERVAL = 5000; // 5 seconds
+        const LOCALSTORAGE_THEME_KEY = 'devproxy-theme';
+
+        // DOM Elements
+        const loadingState = document.getElementById('loading-state');
+        const noHostsState = document.getElementById('no-hosts-state');
+        const hostsContainer = document.getElementById('hosts-container');
+        const statusText = document.getElementById('status-text');
+        const refreshControl = document.getElementById('refresh-control');
+        const refreshIcon = document.getElementById('refresh-icon');
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeOptions = document.querySelectorAll('[role="radio"]');
+
+        // App state
+        let lastData = null;
+        let autoRefreshEnabled = true;
+        let refreshIntervalId = null;
+        let currentTheme = 'system'; // Default to system theme
+
+        // Extract base domain from hostname
+        function getBaseDomain(hostname) {
+            const parts = hostname.split('.');
+            if (parts.length <= 2) return hostname;
+            // Get the last two parts (TLD and domain)
+            return parts.slice(-2).join('.');
+        }
+
+        // Group hosts by base domain
+        function groupHostsByDomain(hosts) {
+            const groups = {};
+
+            hosts.forEach(host => {
+                const url = new URL(host.url);
+                const hostname = url.hostname;
+                const baseDomain = getBaseDomain(hostname);
+
+                if (!groups[baseDomain]) {
+                    groups[baseDomain] = [];
+                }
+
+                groups[baseDomain].push({
+                    name: host.name,
+                    url: host.url
+                });
+            });
+
+            return groups;
+        }
+
+        // Toggle collapsible section
+        function toggleSection(section) {
+            section.classList.toggle('collapsed');
+        }
+
+        // Toggle auto-refresh
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+
+            if (autoRefreshEnabled) {
+                statusText.textContent = 'Auto-refreshing';
+                refreshControl.classList.remove('paused');
+                refreshControl.classList.add('active');
+                refreshIcon.className = 'icon-sync';
+                startAutoRefresh();
+            } else {
+                statusText.textContent = 'Refresh paused';
+                refreshControl.classList.remove('active');
+                refreshControl.classList.add('paused');
+                refreshIcon.className = 'icon-pause';
+                stopAutoRefresh();
+            }
+        }
+
+        // Set theme (light, dark, or system)
+        function setTheme(theme) {
+            const html = document.documentElement;
+            const prefersDark = localStorage.getItem(LOCALSTORAGE_THEME_KEY) === 'dark' || (!(LOCALSTORAGE_THEME_KEY in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+            // Update current theme
+            currentTheme = theme;
+
+            // Apply theme
+            if (theme === 'system') {
+                // Use system preference
+                html.classList.toggle('dark', prefersDark);
+                localStorage.removeItem(LOCALSTORAGE_THEME_KEY);
+            } else {
+                // Use selected theme
+                const isDark = theme === 'dark';
+                html.classList.toggle('dark', isDark);
+                localStorage.setItem(LOCALSTORAGE_THEME_KEY, theme);
+            }
+
+            // Update UI
+            updateThemeUI();
+        }
+
+        // Update theme UI based on current theme
+        function updateThemeUI() {
+            // Clear all checked states
+            themeOptions.forEach(option => {
+                option.removeAttribute('data-checked');
+                option.setAttribute('aria-checked', 'false');
+                option.setAttribute('tabindex', '-1');
+            });
+
+            // Set active state for current theme
+            const activeOption = document.getElementById(`theme-${currentTheme}`);
+            if (activeOption) {
+                activeOption.setAttribute('data-checked', '');
+                activeOption.setAttribute('aria-checked', 'true');
+                activeOption.setAttribute('tabindex', '0');
+            }
+        }
+
+        // Set theme based on saved preference or system preference
+        function initializeTheme() {
+            // Check for saved theme preference
+            const savedTheme = localStorage.getItem(LOCALSTORAGE_THEME_KEY);
+
+            if (savedTheme) {
+                // Use saved preference
+                currentTheme = savedTheme;
+            } else {
+                // Use system preference
+                currentTheme = 'system';
+            }
+
+            // Apply theme
+            setTheme(currentTheme);
+        }
+
+        // Start auto refresh
+        function startAutoRefresh() {
+            if (refreshIntervalId) return;
+            refreshIntervalId = setInterval(checkForVhosts, REFRESH_INTERVAL);
+        }
+
+        // Stop auto refresh
+        function stopAutoRefresh() {
+            if (refreshIntervalId) {
+                clearInterval(refreshIntervalId);
+                refreshIntervalId = null;
+            }
+        }
+
+        // Render the hosts list
+        function renderHostsList(groups) {
+            hostsContainer.innerHTML = '';
+
+            Object.keys(groups).sort().forEach(domain => {
+                const hosts = groups[domain];
+
+                const section = document.createElement('section');
+                section.className = 'bg-white dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-lg mb-3 overflow-hidden collapsed';
+
+                const heading = document.createElement('div');
+                heading.className = 'group-title';
+                heading.innerHTML = `
+                    <span>${domain}</span>
+                    <span class="icon-expand text-slate-500 dark:text-slate-400"></span>
+                `;
+                heading.addEventListener('click', () => toggleSection(section));
+
+                const contentWrapper = document.createElement('div');
+                contentWrapper.className = 'collapsible-content';
+
+                const list = document.createElement('ul');
+                list.className = 'divide-y divide-slate-200 dark:divide-slate-800';
+
+                hosts.forEach(host => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-item-hover hover:bg-slate-100 dark:hover:bg-slate-700';
+
+                    const link = document.createElement('a');
+                    link.className = 'flex items-center gap-3 px-4 py-2 justify-between bg-white dark:bg-slate-900';
+                    link.href = host.url;
+
+                    const span = document.createElement('span');
+                    span.className = 'text-slate-800 dark:text-slate-200 text-sm font-medium leading-normal flex-1 truncate';
+                    span.textContent = host.name;
+
+                    const icon = document.createElement('span');
+                    icon.className = 'icon-arrow text-slate-400 dark:text-slate-500 text-xs';
+
+                    link.appendChild(span);
+                    link.appendChild(icon);
+                    listItem.appendChild(link);
+                    list.appendChild(listItem);
+                });
+
+                contentWrapper.appendChild(list);
+                section.appendChild(heading);
+                section.appendChild(contentWrapper);
+                hostsContainer.appendChild(section);
+            });
+
+            // Update the UI state
+            loadingState.classList.add('hidden');
+            hostsContainer.classList.remove('hidden');
+        }
+
+        // Check for vhosts.json and handle the data
+        async function checkForVhosts() {
+            try {
+                const response = await fetch(VHOSTS_URL, {
+                    cache: 'no-store', // Don't cache the response
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch vhosts: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const currentData = JSON.stringify(data);
+
+                // Check if we have hosts and if data has changed
+                if (data && Array.isArray(data) && data.length > 0) {
+                    if (currentData !== lastData) {
+                        console.log('Hosts data changed, updating UI');
+                        const groupedHosts = groupHostsByDomain(data);
+                        renderHostsList(groupedHosts);
+                    }
+
+                    noHostsState.classList.add('hidden');
+                    hostsContainer.classList.remove('hidden');
+                } else {
+                    loadingState.classList.add('hidden');
+                    hostsContainer.classList.add('hidden');
+                    noHostsState.classList.remove('hidden');
+                }
+
+                // Update last data for change detection
+                lastData = currentData;
+
+                // Update status
+                if (autoRefreshEnabled) {
+                    statusText.textContent = 'Auto-refreshing';
+                }
+
+            } catch (error) {
+                console.error('Error fetching vhosts:', error);
+                loadingState.classList.add('hidden');
+                hostsContainer.classList.add('hidden');
+                noHostsState.classList.remove('hidden');
+                statusText.textContent = autoRefreshEnabled ? 'Refresh failed' : 'Refresh paused';
+            }
+        }
+
+        // Initialize and set up periodic refresh
+        function init() {
+            // Initialize theme based on saved preferences or system preference
+            initializeTheme();
+
+            // Add event listeners for theme options
+            themeOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    const theme = this.getAttribute('data-theme');
+                    setTheme(theme);
+                });
+
+                // Make keyboard accessible
+                option.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const theme = this.getAttribute('data-theme');
+                        setTheme(theme);
+                    }
+                });
+            });
+
+            // Add event listener for refresh control
+            refreshControl.addEventListener('click', toggleAutoRefresh);
+
+            // Initial check
+            checkForVhosts();
+
+            // Set up periodic refresh
+            startAutoRefresh();
+
+            // Add event listener for details element
+            document.querySelector('details.group').addEventListener('toggle', function() {
+                if (this.open) {
+                    this.classList.add('open');
+                } else {
+                    this.classList.remove('open');
+                }
+            });
+
+            // Listen for OS theme changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                // Only apply if theme is set to system
+                if (currentTheme === 'system') {
+                    document.documentElement.classList.toggle('dark', event.matches);
+                }
+            });
+        }
+
+        // Start when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

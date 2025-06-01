@@ -21,6 +21,9 @@ EOF
 # Get all domains from nginx config
 LOCAL_DOMAINS=$(nginx -T 2>/dev/null | sed -nr "s/\sserver_name\s([^_ ]+);/\1/p" | uniq)
 
+# Add localhost ans 127.0.0.1 to the list of domains
+LOCAL_DOMAINS="$LOCAL_DOMAINS localhost 127.0.0.1"
+
 # Iterate over LOCAL_DOMAINS and add lines to domains.ext
 LOOP_COUNTER=1
 for domain in localhost $LOCAL_DOMAINS; do
