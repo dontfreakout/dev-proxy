@@ -98,6 +98,11 @@ This will download docker image and start the proxy with default settings.
 ./start-proxy.sh
 ```
 
+### Open the proxy localhost page
+After starting the proxy, you can open the [localhost](https://localhost) page in your browser to see all available vhosts.
+
+(Note: If you are using a different port for the proxy, you need to change the URL accordingly, e.g. `https://localhost:8443`)
+
 ### Command line options
 **Usage:** `./start-proxy.sh [options] [command]`
 

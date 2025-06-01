@@ -1,5 +1,5 @@
 FROM nginxproxy/nginx-proxy:1.2.2
-LABEL version="1.2.2"
+LABEL version="1.2.9"
 
 RUN apt-get update && apt-get install -y \
     jq \

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.9
+### Enhancements
+ - Added a default [localhost](https://localhost) page showing all available vhosts when accessing the root URL
+ - Added `--json` option to `show-vhosts.sh` command to output vhosts in JSON format
+ - Added `--list` option to `show-vhosts.sh` command to list vhosts without formatting
+
 ## 1.2.2
 ### Enhancements
  - Replace tput with ANSI escape codes for better compatibility
