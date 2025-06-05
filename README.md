@@ -169,6 +169,30 @@ See [CHANGELOG.md](CHANGELOG.md) for more information on what has changed recent
 ## Contributing
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
+### Build and Deployment
+This project uses GitHub Actions to automatically build and deploy Docker images to GitHub Container Registry (ghcr.io) when a new git tag is created.
+
+#### Creating a new release
+1. Update the version in the Dockerfile (`LABEL version="x.y.z"`)
+2. Commit and push your changes
+3. Create and push a new git tag:
+   ```sh
+   git tag v1.2.10
+   git push origin v1.2.10
+   ```
+4. The GitHub workflow will automatically build the Docker image for both amd64 and arm64 architectures and push it to ghcr.io with the tag matching the git tag.
+
+#### Manual building
+You can also build the image manually using the Makefile:
+```sh
+make build
+```
+
+Or build without caching:
+```sh
+make build-nc
+```
+
 ## License
 Distributed under the MIT License. See `LICENSE` for more information.
 

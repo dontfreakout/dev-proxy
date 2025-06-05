@@ -30,3 +30,4 @@ fabric.properties
 *.iml
 out
 gen
+/src/html/vhosts.json
