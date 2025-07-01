@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.10
+### Enhancements
+    - Add database icon support and expand frontend-related icon mappings on the vhost page
+
 ## 1.2.9
 ### Enhancements
  - Added a default [localhost](https://localhost) page showing all available vhosts when accessing the root URL

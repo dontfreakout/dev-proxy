@@ -26,6 +26,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Extract version from Dockerfile
         id: version
         run: echo "VERSION=$(./version.sh)" >> $GITHUB_OUTPUT
@@ -34,12 +41,14 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/${{ github.repository_owner }}/dev-proxy
+          images: |
+            ghcr.io/${{ github.repository_owner }}/dev-proxy
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/dev-proxy
           tags: |
             type=semver,pattern={{version}},value=${{ github.ref_name }}
             type=raw,value=latest,enable=${{ github.ref_name != 'main' }}
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image to GitHub and Docker Hub
         uses: docker/build-push-action@v4
         with:
           context: .
