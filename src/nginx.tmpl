@@ -20,6 +20,7 @@
 {{- $_ := set $globals "enable_ipv6" (parseBool (coalesce $globals.Env.ENABLE_IPV6 "false")) }}
 {{- $_ := set $globals "ssl_policy" (or ($globals.Env.SSL_POLICY) "Mozilla-Intermediate") }}
 {{- $_ := set $globals "networks" (dict) }}
+
 # networks available to nginx-proxy:
 {{- range sortObjectsByKeysAsc $globals.CurrentContainer.Networks "Name" }}
     {{- $_ := set $globals.networks .Name . }}
@@ -307,6 +308,8 @@ server {
 
     # Serve initial loading page when no vhost matches
     root /app/html;
+
+    disable_symlinks off;
 
     location / {
     {{- if (and (exists "/etc/nginx/certs/shared.crt") (exists "/etc/nginx/certs/shared.key")) }}

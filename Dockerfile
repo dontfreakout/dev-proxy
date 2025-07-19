@@ -1,5 +1,5 @@
 FROM nginxproxy/nginx-proxy:1.2.2
-LABEL version="1.2.9"
+LABEL version="1.2.11"
 
 RUN apt-get update && apt-get install -y \
     jq \
@@ -10,6 +10,9 @@ COPY ./src/dev_proxy.conf /etc/nginx/conf.d/dev_proxy.conf
 # New files for dynamic vhost page
 
 COPY ./src/html /app/html
+
+RUN mkdir -p /etc/nginx/certs && \
+    ln -s /etc/nginx/certs /app/html/certs
 
 # Original file copies
 COPY ./src/auto-cert.sh /app/

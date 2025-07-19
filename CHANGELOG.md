@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.11
+### Enhancements
+- Added SSL certificate download functionality from the vhost page (see help button)
+- Improved mobile responsiveness
+- Updated DevProxy logo
+
 ## 1.2.10
 ### Enhancements
     - Add database icon support and expand frontend-related icon mappings on the vhost page
